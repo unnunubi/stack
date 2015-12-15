@@ -215,6 +215,8 @@ int Catalog::load_by_template(Addon *addon, unsigned int ipcp_id,
 				     qit->dtcp_config_.dtcp_policy_set_);
 	}
 
+	psinfo_from_psconfig(required_policy_sets, "security-manager",
+		t->secManConfiguration.default_auth_profile.authPolicy);
         psinfo_from_psconfig(required_policy_sets, "crypto",
                 t->secManConfiguration.default_auth_profile.encryptPolicy);
         psinfo_from_psconfig(required_policy_sets, "errc",
@@ -226,6 +228,8 @@ int Catalog::load_by_template(Addon *addon, unsigned int ipcp_id,
                 pit = t->secManConfiguration.specific_auth_profiles.begin();
                     pit !=t->secManConfiguration.specific_auth_profiles.end();
                         pit++) {
+        	psinfo_from_psconfig(required_policy_sets, "security-manager",
+        			     pit->second.authPolicy);
 		psinfo_from_psconfig(required_policy_sets, "crypto",
 				     pit->second.encryptPolicy);
 		psinfo_from_psconfig(required_policy_sets, "errc",
