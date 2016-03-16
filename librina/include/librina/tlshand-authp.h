@@ -103,6 +103,7 @@ public:
 
 	// Owned by a timer
 	CancelAuthTimerTask * timer_task;
+	X509 * cert;
 
 private:
 	//return -1 if options are valid, 0 otherwise
@@ -139,6 +140,9 @@ private:
 	int process_server_hello_message(const cdap::CDAPMessage& message,
 					 int session_id);
 	int load_credentials(TLSHandSecurityContext * sc);
+
+	//Load the authentication certificate required for this DIF from a file
+	int load_authentication_certificate(TLSHandSecurityContext * sc);
 
 	rib::RIBDaemonProxy * rib_daemon;
 	ISecurityManager * sec_man;

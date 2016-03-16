@@ -24,6 +24,11 @@
 #include <openssl/pem.h>
 #include <openssl/rand.h>
 
+/* OpenSSL headers Berta */
+#include <openssl/x509_vfy.h>
+#include <openssl/x509.h>
+
+
 #define RINA_PREFIX "librina.tls-handshake"
 
 #include "librina/logs.h"
@@ -142,6 +147,10 @@ const std::string TLSHandSecurityContext::KEYSTORE_PASSWORD = "keystorePass";
 
 TLSHandSecurityContext::~TLSHandSecurityContext()
 {
+	if (cert) {
+			X509_free(cert);
+			cert = NULL;
+		}
 }
 
 CryptoState TLSHandSecurityContext::get_crypto_state(bool enable_crypto_tx,
@@ -174,6 +183,8 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 
 	timer_task = NULL;
 	state = BEGIN;
+
+	cert = NULL;
 }
 
 TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
@@ -369,6 +380,32 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 	return rina::IAuthPolicySet::FAILED;
 }
 
+int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext * sc)
+{
+	BIO * certstore;
+
+	certstore =  BIO_new_file("/stack/librina/creds/cert1.pem", "r"); //path del certificat retocar
+	if (!certstore) {
+		LOG_ERR("Problems opening certificate file at: %s",
+			sc->keystore_path.c_str());
+		return -1;
+	}
+
+
+	sc->cert = PEM_read_bio_X509(certstore, NULL, 0, NULL);
+	BIO_free(certstore);
+
+	if (!sc->cert) {
+		LOG_ERR("Problems reading certificate %s",
+			ERR_error_string(ERR_get_error(), NULL));
+		return -1;
+	}
+
+
+	LOG_DBG("end load certificate");
+	return 0;
+}
+
 int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& message,
 				 	 	       int session_id)
 {
@@ -401,6 +438,9 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 				     sc->version);
 
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_CERTIFICATE;
+
+	load_authentication_certificate(sc);
+
 
 	return IAuthPolicySet::IN_PROGRESS;
 }
