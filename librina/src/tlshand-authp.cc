@@ -385,11 +385,11 @@ int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext
 	BIO * certstore;
 
 	//certstore =  BIO_new_file("/stack/librina/creds/cert1.pem", "r"); //path del certificat retocar
+	LOG_DBG("Start loading certificate");
 
-	certstore =  BIO_new_file("/Escritorio/Certificats_publics3/cert1.pem", "r");
+	certstore =  BIO_new_file("./Escritorio/Certificats_publics3/cert1.pem", "r");
 	if (!certstore) {
-		LOG_ERR("Problems opening certificate file at: %s",
-			sc->keystore_path.c_str());
+		LOG_ERR("Problems opening certificate file");
 		return -1;
 	}
 
@@ -398,8 +398,7 @@ int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext
 	BIO_free(certstore);
 
 	if (!sc->cert) {
-		LOG_ERR("Problems reading certificate %s",
-			ERR_error_string(ERR_get_error(), NULL));
+		LOG_ERR("Problems reading certificate %s", ERR_error_string(ERR_get_error(), NULL));
 		return -1;
 	}
 
