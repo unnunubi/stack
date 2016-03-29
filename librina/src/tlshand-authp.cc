@@ -384,7 +384,9 @@ int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext
 {
 	BIO * certstore;
 
-	certstore =  BIO_new_file("/stack/librina/creds/cert1.pem", "r"); //path del certificat retocar
+	//certstore =  BIO_new_file("/stack/librina/creds/cert1.pem", "r"); //path del certificat retocar
+
+	certstore =  BIO_new_file("/Escritorio/Certificats_publics3/cert1.pem", "r");
 	if (!certstore) {
 		LOG_ERR("Problems opening certificate file at: %s",
 			sc->keystore_path.c_str());
