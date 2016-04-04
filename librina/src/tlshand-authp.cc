@@ -393,17 +393,10 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext * sc)
 {
 
-	/* BIO * keystore;
-
-	keystore =  BIO_new_file(sc->keystore_path.c_str(), "r");
-	if (!keystore) {
-		LOG_ERR("Problems opening keystore file at: %s",
-			sc->keystore_path.c_str());
-		return -1;*/
 	BIO * certstore;
 		LOG_DBG("Start loading certificate");
 
-		certstore =  BIO_new_file("sc->certificate_path.c_str()",  "r");
+		certstore =  BIO_new_file(sc->certificate_path.c_str(),  "r");
 		if (!certstore) {
 			LOG_ERR("Problems opening certificate file at: %s", sc->certificate_path.c_str());
 					return -1;
