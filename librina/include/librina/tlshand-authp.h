@@ -74,6 +74,9 @@ public:
 	static const std::string KEYSTORE_PATH;
 	static const std::string KEYSTORE_PASSWORD;
 
+	//Berta
+	static const std::string CERTIFICATE_PATH;
+
         enum State {
         	BEGIN,
                 WAIT_SERVER_HELLO,
@@ -93,6 +96,9 @@ public:
 	/// Authentication Keystore path and password
 	std::string keystore_path;
 	std::string keystore_password;
+
+	//berta Certificates
+	std::string certificate_path;
 
 	/// Encryption policy configuration
 	PolicyConfig encrypt_policy_config;

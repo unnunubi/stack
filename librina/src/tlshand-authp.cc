@@ -145,6 +145,10 @@ const std::string TLSHandSecurityContext::COMPRESSION_METHOD = "compressionMetho
 const std::string TLSHandSecurityContext::KEYSTORE_PATH = "keystore";
 const std::string TLSHandSecurityContext::KEYSTORE_PASSWORD = "keystorePass";
 
+//Berta
+const std::string TLSHandSecurityContext::CERTIFICATE_PATH = "myCert";
+
+
 TLSHandSecurityContext::~TLSHandSecurityContext()
 {
 	if (cert) {
@@ -181,6 +185,9 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 	encrypt_policy_config = profile.encryptPolicy;
 	con.port_id = session_id;
 
+	//BERTA
+	certificate_path = profile.authPolicy.get_param_value_as_string(CERTIFICATE_PATH);
+
 	timer_task = NULL;
 	state = BEGIN;
 
@@ -211,6 +218,9 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 	}
 
 	client_random = options->random;
+
+	//BERTA
+	certificate_path = profile.authPolicy.get_param_value_as_string(CERTIFICATE_PATH);
 
 	keystore_path = profile.authPolicy.get_param_value_as_string(KEYSTORE_PATH);
 	if (keystore_path == std::string()) {
@@ -382,9 +392,32 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 
 int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext * sc)
 {
-	BIO * certstore;
 
-	//certstore =  BIO_new_file("/stack/librina/creds/cert1.pem", "r"); //path del certificat retocar
+	/* BIO * keystore;
+
+	keystore =  BIO_new_file(sc->keystore_path.c_str(), "r");
+	if (!keystore) {
+		LOG_ERR("Problems opening keystore file at: %s",
+			sc->keystore_path.c_str());
+		return -1;*/
+	BIO * myCert;
+		LOG_DBG("Start loading certificate");
+
+		myCert =  BIO_new_file("sc->certificate_path.c_str()",  "r");
+		if (!myCert) {
+			LOG_ERR("Problems opening certificate file at: %s", sc->certificate_path.c_str());
+					return -1;
+		}
+
+
+		sc->cert = PEM_read_bio_X509(myCert, NULL, 0, NULL);
+		BIO_free(myCert);
+
+		if (!sc->cert) {
+			LOG_ERR("Problems reading certificate %s", ERR_error_string(ERR_get_error(), NULL));
+			return -1;
+
+	/*BIO * certstore;
 	LOG_DBG("Start loading certificate");
 
 	certstore =  BIO_new_file("/home/berta/Escritorio/Certificats_publics3/cert1.pem",  "r");
@@ -399,7 +432,7 @@ int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext
 
 	if (!sc->cert) {
 		LOG_ERR("Problems reading certificate %s", ERR_error_string(ERR_get_error(), NULL));
-		return -1;
+		return -1;*/
 	}
 
 
