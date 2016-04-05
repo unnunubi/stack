@@ -150,7 +150,7 @@ const std::string TLSHandSecurityContext::CERTIFICATE_PATH = "myCredentials";
 const std::string TLSHandSecurityContext::MY_CERTIFICATE = "certificate.pem";
 
 
-		TLSHandSecurityContext::~TLSHandSecurityContext()
+TLSHandSecurityContext::~TLSHandSecurityContext()
 {
 	if (cert) {
 		X509_free(cert);
@@ -401,7 +401,7 @@ int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext
 	ss << sc->certificate_path.c_str() << "/" << TLSHandSecurityContext::MY_CERTIFICATE;
 	certstore =  BIO_new_file(ss.str().c_str(),  "r");
 	if (!certstore) {
-		LOG_ERR("Problems opening certificate file at: %s", sc->certificate_path.c_str());
+		LOG_ERR("Problems opening certificate file at: %s", ss.str().c_str());
 		return -1;
 	}
 
@@ -411,25 +411,7 @@ int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext
 		LOG_ERR("Problems reading certificate %s", ERR_error_string(ERR_get_error(), NULL));
 		return -1;
 
-		/*BIO * certstore;
-	LOG_DBG("Start loading certificate");
-
-	certstore =  BIO_new_file("/home/berta/Escritorio/Certificats_publics3/cert1.pem",  "r");
-	if (!certstore) {
-		LOG_ERR("Problems opening certificate file");
-		return -1;
 	}
-
-
-	sc->cert = PEM_read_bio_X509(certstore, NULL, 0, NULL);
-	BIO_free(certstore);
-
-	if (!sc->cert) {
-		LOG_ERR("Problems reading certificate %s", ERR_error_string(ERR_get_error(), NULL));
-		return -1;*/
-	}
-
-
 	LOG_DBG("end load certificate");
 	return 0;
 }
