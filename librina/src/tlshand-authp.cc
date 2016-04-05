@@ -39,7 +39,7 @@ namespace rina {
 
 //TLSHandAuthOptions encoder and decoder operations
 void decode_tls_hand_auth_options(const ser_obj_t &message,
-				  TLSHandAuthOptions &options)
+		TLSHandAuthOptions &options)
 {
 	rina::auth::policies::googleprotobuf::authOptsTLSHandshake_t gpb_options;
 
@@ -56,17 +56,17 @@ void decode_tls_hand_auth_options(const ser_obj_t &message,
 	options.random.utc_unix_time = gpb_options.utc_unix_time();
 
 	if (gpb_options.has_random_bytes()) {
-		  options.random.random_bytes.data =
-				  new unsigned char[gpb_options.random_bytes().size()];
-		  memcpy(options.random.random_bytes.data,
-			 gpb_options.random_bytes().data(),
-			 gpb_options.random_bytes().size());
-		  options.random.random_bytes.length = gpb_options.random_bytes().size();
+		options.random.random_bytes.data =
+				new unsigned char[gpb_options.random_bytes().size()];
+		memcpy(options.random.random_bytes.data,
+				gpb_options.random_bytes().data(),
+				gpb_options.random_bytes().size());
+		options.random.random_bytes.length = gpb_options.random_bytes().size();
 	}
 }
 
 void encode_tls_hand_auth_options(const TLSHandAuthOptions& options,
-			          ser_obj_t& result)
+		ser_obj_t& result)
 {
 	rina::auth::policies::googleprotobuf::authOptsTLSHandshake_t gpb_options;
 
@@ -84,7 +84,7 @@ void encode_tls_hand_auth_options(const TLSHandAuthOptions& options,
 
 	if (options.random.random_bytes.length > 0) {
 		gpb_options.set_random_bytes(options.random.random_bytes.data,
-					     options.random.random_bytes.length);
+				options.random.random_bytes.length);
 	}
 
 	int size = gpb_options.ByteSize();
@@ -94,15 +94,15 @@ void encode_tls_hand_auth_options(const TLSHandAuthOptions& options,
 }
 
 void encode_server_hello_tls_hand(const TLSHandRandom& random,
-				  const std::string& cipher_suite,
-				  const std::string& compress_method,
-				  const std::string& version,
-				  ser_obj_t& result)
+		const std::string& cipher_suite,
+		const std::string& compress_method,
+		const std::string& version,
+		ser_obj_t& result)
 {
 	rina::auth::policies::googleprotobuf::serverHelloTLSHandshake_t gpb_hello;
 
 	gpb_hello.set_random_bytes(random.random_bytes.data,
-				   random.random_bytes.length);
+			random.random_bytes.length);
 	gpb_hello.set_utc_unix_time(random.utc_unix_time);
 	gpb_hello.set_version(version);
 	gpb_hello.set_cipher_suite(cipher_suite);
@@ -115,10 +115,10 @@ void encode_server_hello_tls_hand(const TLSHandRandom& random,
 }
 
 void decode_server_hello_tls_hand(const ser_obj_t &message,
-				  TLSHandRandom& random,
-				  std::string& cipher_suite,
-				  std::string& compress_method,
-				  std::string& version)
+		TLSHandRandom& random,
+		std::string& cipher_suite,
+		std::string& compress_method,
+		std::string& version)
 {
 	rina::auth::policies::googleprotobuf::serverHelloTLSHandshake_t gpb_hello;
 
@@ -126,10 +126,10 @@ void decode_server_hello_tls_hand(const ser_obj_t &message,
 
 	if (gpb_hello.has_random_bytes()) {
 		random.random_bytes.data =
-				  new unsigned char[gpb_hello.random_bytes().size()];
+				new unsigned char[gpb_hello.random_bytes().size()];
 		memcpy(random.random_bytes.data,
-		       gpb_hello.random_bytes().data(),
-		       gpb_hello.random_bytes().size());
+				gpb_hello.random_bytes().data(),
+				gpb_hello.random_bytes().size());
 		random.random_bytes.length = gpb_hello.random_bytes().size();
 	}
 
@@ -146,19 +146,20 @@ const std::string TLSHandSecurityContext::KEYSTORE_PATH = "keystore";
 const std::string TLSHandSecurityContext::KEYSTORE_PASSWORD = "keystorePass";
 
 //Berta
-const std::string TLSHandSecurityContext::CERTIFICATE_PATH = "myCert";
+const std::string TLSHandSecurityContext::CERTIFICATE_PATH = "myCredentials";
+const std::string TLSHandSecurityContext::MY_CERTIFICATE = "certificate.pem";
 
 
-TLSHandSecurityContext::~TLSHandSecurityContext()
+		TLSHandSecurityContext::~TLSHandSecurityContext()
 {
 	if (cert) {
-			X509_free(cert);
-			cert = NULL;
-		}
+		X509_free(cert);
+		cert = NULL;
+	}
 }
 
 CryptoState TLSHandSecurityContext::get_crypto_state(bool enable_crypto_tx,
-					 	     bool enable_crypto_rx)
+		bool enable_crypto_rx)
 {
 	CryptoState result;
 	result.enable_crypto_tx = enable_crypto_tx;
@@ -170,8 +171,8 @@ CryptoState TLSHandSecurityContext::get_crypto_state(bool enable_crypto_tx,
 }
 
 TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
-				   	       const AuthSDUProtectionProfile& profile)
-		: ISecurityContext(session_id)
+		const AuthSDUProtectionProfile& profile)
+: ISecurityContext(session_id)
 {
 	cipher_suite = profile.authPolicy.get_param_value_as_string(CIPHER_SUITE);
 	compress_method = profile.authPolicy.get_param_value_as_string(COMPRESSION_METHOD);
@@ -195,14 +196,14 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 }
 
 TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
-					       const AuthSDUProtectionProfile& profile,
-					       TLSHandAuthOptions * options)
-		: ISecurityContext(session_id)
+		const AuthSDUProtectionProfile& profile,
+		TLSHandAuthOptions * options)
+: ISecurityContext(session_id)
 {
 	std::string option = options->cipher_suites.front();
 	if (option != "TODO") {
 		LOG_ERR("Unsupported cipher suite: %s",
-			option.c_str());
+				option.c_str());
 		throw Exception();
 	} else {
 		cipher_suite = option;
@@ -211,7 +212,7 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 	option = options->compress_methods.front();
 	if (option != "TODO") {
 		LOG_ERR("Unsupported compression method: %s",
-			option.c_str());
+				option.c_str());
 		throw Exception();
 	} else {
 		compress_method = option;
@@ -241,8 +242,8 @@ const int AuthTLSHandPolicySet::DEFAULT_TIMEOUT = 10000;
 const std::string AuthTLSHandPolicySet::SERVER_HELLO = "Server Hello";
 
 AuthTLSHandPolicySet::AuthTLSHandPolicySet(rib::RIBDaemonProxy * ribd,
-		     	     	           ISecurityManager * sm) :
-		IAuthPolicySet(IAuthPolicySet::AUTH_TLSHAND)
+		ISecurityManager * sm) :
+				IAuthPolicySet(IAuthPolicySet::AUTH_TLSHAND)
 {
 	rib_daemon = ribd;
 	sec_man = sm;
@@ -254,7 +255,7 @@ AuthTLSHandPolicySet::~AuthTLSHandPolicySet()
 }
 
 cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
-			   	        		      const AuthSDUProtectionProfile& profile)
+		const AuthSDUProtectionProfile& profile)
 {
 	if (profile.authPolicy.name_ != type) {
 		LOG_ERR("Wrong policy name: %s, expected: %s",
@@ -267,7 +268,7 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 
 	if (sec_man->get_security_context(session_id) != 0) {
 		LOG_ERR("A security context already exists for session_id: %d",
-			session_id);
+				session_id);
 		throw Exception();
 	}
 
@@ -277,14 +278,14 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 	auth_policy.versions.push_back(profile.authPolicy.version_);
 
 	TLSHandSecurityContext * sc = new TLSHandSecurityContext(session_id,
-								 profile);
+			profile);
 	sc->client_random.utc_unix_time = (unsigned int) time(NULL);
 	sc->client_random.random_bytes.data = new unsigned char[28];
 	sc->client_random.random_bytes.length = 28;
 	if (RAND_bytes(sc->client_random.random_bytes.data,
-		       sc->client_random.random_bytes.length) == 0) {
+			sc->client_random.random_bytes.length) == 0) {
 		LOG_ERR("Problems generating client random bytes: %s",
-		        ERR_error_string(ERR_get_error(), NULL));
+				ERR_error_string(ERR_get_error(), NULL));
 		delete sc;
 		throw Exception();
 	}
@@ -295,7 +296,7 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 	options.random = sc->client_random;
 
 	encode_tls_hand_auth_options(options,
-				     auth_policy.options);
+			auth_policy.options);
 
 	//Store security context
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_HELLO;
@@ -305,8 +306,8 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 }
 
 IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const cdap_rib::auth_policy_t& auth_policy,
-								         const AuthSDUProtectionProfile& profile,
-								         int session_id)
+		const AuthSDUProtectionProfile& profile,
+		int session_id)
 {
 	if (auth_policy.name != type) {
 		LOG_ERR("Wrong policy name: %s", auth_policy.name.c_str());
@@ -360,10 +361,10 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 		obj_info.name_ = SERVER_HELLO;
 		obj_info.inst_ = 0;
 		encode_server_hello_tls_hand(sc->server_random,
-					     sc->cipher_suite,
-					     sc->compress_method,
-					     RINA_DEFAULT_POLICY_VERSION,
-					     obj_info.value_);
+				sc->cipher_suite,
+				sc->compress_method,
+				RINA_DEFAULT_POLICY_VERSION,
+				obj_info.value_);
 
 		rib_daemon->remote_write(sc->con, obj_info, flags, filt, NULL);
 	} catch (Exception &e) {
@@ -376,7 +377,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 }
 
 int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& message,
-						   int session_id)
+		int session_id)
 {
 	if (message.op_code_ != cdap::CDAPMessage::M_WRITE) {
 		LOG_ERR("Wrong operation type");
@@ -394,23 +395,23 @@ int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext
 {
 
 	BIO * certstore;
-		LOG_DBG("Start loading certificate");
+	LOG_DBG("Start loading certificate");
+	std::stringstream ss;
 
-		certstore =  BIO_new_file(sc->certificate_path.c_str(),  "r");
-		if (!certstore) {
-			LOG_ERR("Problems opening certificate file at: %s", sc->certificate_path.c_str());
-					return -1;
-		}
+	ss << sc->certificate_path.c_str() << "/" << TLSHandSecurityContext::MY_CERTIFICATE;
+	certstore =  BIO_new_file(ss.str().c_str(),  "r");
+	if (!certstore) {
+		LOG_ERR("Problems opening certificate file at: %s", sc->certificate_path.c_str());
+		return -1;
+	}
 
+	sc->cert = PEM_read_bio_X509(certstore, NULL, 0, NULL);
+	BIO_free(certstore);
+	if (!sc->cert) {
+		LOG_ERR("Problems reading certificate %s", ERR_error_string(ERR_get_error(), NULL));
+		return -1;
 
-		sc->cert = PEM_read_bio_X509(certstore, NULL, 0, NULL);
-		BIO_free(certstore);
-
-		if (!sc->cert) {
-			LOG_ERR("Problems reading certificate %s", ERR_error_string(ERR_get_error(), NULL));
-			return -1;
-
-	/*BIO * certstore;
+		/*BIO * certstore;
 	LOG_DBG("Start loading certificate");
 
 	certstore =  BIO_new_file("/home/berta/Escritorio/Certificats_publics3/cert1.pem",  "r");
@@ -434,7 +435,7 @@ int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext
 }
 
 int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& message,
-				 	 	       int session_id)
+		int session_id)
 {
 	TLSHandSecurityContext * sc;
 
@@ -459,10 +460,10 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 	}
 
 	decode_server_hello_tls_hand(message.obj_value_,
-				     sc->server_random,
-				     sc->cipher_suite,
-				     sc->compress_method,
-				     sc->version);
+			sc->server_random,
+			sc->cipher_suite,
+			sc->compress_method,
+			sc->version);
 
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_CERTIFICATE;
 
@@ -473,11 +474,11 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 }
 
 int AuthTLSHandPolicySet::set_policy_set_param(const std::string& name,
-                         	 	       const std::string& value)
+		const std::string& value)
 {
-        LOG_DBG("No policy-set-specific parameters to set (%s, %s)",
-                        name.c_str(), value.c_str());
-        return -1;
+	LOG_DBG("No policy-set-specific parameters to set (%s, %s)",
+			name.c_str(), value.c_str());
+	return -1;
 }
 
 IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::crypto_state_updated(int port_id)
@@ -489,7 +490,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::crypto_state_updated(int port_i
 	sc = dynamic_cast<TLSHandSecurityContext *>(sec_man->get_security_context(port_id));
 	if (!sc) {
 		LOG_ERR("Could not retrieve TLS Handshake security context for port-id: %d",
-			port_id);
+				port_id);
 		return IAuthPolicySet::FAILED;
 	}
 

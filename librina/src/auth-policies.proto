@@ -33,3 +33,8 @@ message serverHelloTLSHandshake_t {
 	optional string compress_method = 5;		// Compression method chosen for the connection
 	optional uint32 ap_con_id = 6;			// Application connection id
 }
+
+message serverCertificateTLSHandshake_t {
+	optional bytes certificate_chain = 1;			// The encoded certificate chain
+}
+	

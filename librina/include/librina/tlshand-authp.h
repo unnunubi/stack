@@ -76,6 +76,8 @@ public:
 
 	//Berta
 	static const std::string CERTIFICATE_PATH;
+	static const std::string MY_CERTIFICATE;
+
 
         enum State {
         	BEGIN,
