@@ -79,6 +79,7 @@ public:
 	static const std::string MY_CERTIFICATE;
 
 
+
         enum State {
         	BEGIN,
                 WAIT_SERVER_HELLO,
@@ -127,6 +128,7 @@ public:
 	static const std::string EDH_EXCHANGE;
 	static const int MIN_RSA_KEY_PAIR_LENGTH;
 	static const std::string SERVER_HELLO;
+	static const std::string SERVER_CERTIFICATE;
 
 	AuthTLSHandPolicySet(rib::RIBDaemonProxy * ribd,
 			     ISecurityManager * sm);

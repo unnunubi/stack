@@ -114,6 +114,8 @@ void encode_server_hello_tls_hand(const TLSHandRandom& random,
 	gpb_hello.SerializeToArray(result.message_ , size);
 }
 
+
+
 void decode_server_hello_tls_hand(const ser_obj_t &message,
 		TLSHandRandom& random,
 		std::string& cipher_suite,
@@ -138,6 +140,34 @@ void decode_server_hello_tls_hand(const ser_obj_t &message,
 	cipher_suite = gpb_hello.cipher_suite();
 	compress_method = gpb_hello.compress_method();
 }
+
+
+//Server certificate
+void encode_server_certificate_tls_hand(const UcharArray& certificate_chain,
+		ser_obj_t& result)
+{
+	rina::auth::policies::googleprotobuf::serverCertificateTLSHandshake_t gpb_scertificate;
+
+	gpb_scertificate.set_certificate_chain(certificate_chain.data, certificate_chain.length);
+
+	int size = gpb_scertificate.ByteSize();
+	result.message_ = new unsigned char[size];
+	result.size_ = size;
+	gpb_scertificate.SerializeToArray(result.message_ , size);
+}
+
+void decode_server_certificate_tls_hand(const ser_obj_t &message,
+		TLSHandRandom& random,
+		std::string& certificate_chain)
+{
+	rina::auth::policies::googleprotobuf::serverCertificateTLSHandshake_t gpb_scertificate;
+
+	gpb_scertificate.ParseFromArray(message.message_, message.size_);
+
+	//random.utc_unix_time = gpb_hello.utc_unix_time();
+	certificate_chain = gpb_scertificate.certificate_chain();
+}
+
 
 // Class TLSHandSecurityContext
 const std::string TLSHandSecurityContext::CIPHER_SUITE = "cipherSuite";
@@ -240,6 +270,8 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 //Class AuthTLSHandPolicySet
 const int AuthTLSHandPolicySet::DEFAULT_TIMEOUT = 10000;
 const std::string AuthTLSHandPolicySet::SERVER_HELLO = "Server Hello";
+
+const std::string AuthTLSHandPolicySet::SERVER_CERTIFICATE = "Server Certificate";
 
 AuthTLSHandPolicySet::AuthTLSHandPolicySet(rib::RIBDaemonProxy * ribd,
 		ISecurityManager * sm) :
@@ -450,6 +482,40 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_CERTIFICATE;
 
 	load_authentication_certificate(sc);
+
+	//convert x509
+	UcharArray encoded_cert;
+
+	encoded_cert.length = i2d_X509(sc->cert, &encoded_cert.data);
+	if (encoded_cert.length < 0)
+		LOG_ERR("Error converting certificate");
+
+	//Send server certificate
+	try {
+		cdap_rib::flags_t flags;
+		cdap_rib::filt_info_t filt;
+		cdap_rib::obj_info_t obj_info;
+		cdap::StringEncoder encoder;
+
+		obj_info.class_ = SERVER_CERTIFICATE;
+		obj_info.name_ = SERVER_CERTIFICATE;
+		obj_info.inst_ = 0;
+		encode_server_certificate_tls_hand(encoded_cert,
+				obj_info.value_);
+
+		rib_daemon->remote_write(sc->con,
+				obj_info,
+				flags,
+				filt,
+				NULL);
+	} catch (Exception &e) {
+		LOG_ERR("Problems encoding and sending CDAP message: %s",
+				e.what());
+		sec_man->destroy_security_context(sc->id);
+		return IAuthPolicySet::FAILED;
+	}
+
+	LOG_ERR("End processing process server hello");
 
 
 	return IAuthPolicySet::IN_PROGRESS;
