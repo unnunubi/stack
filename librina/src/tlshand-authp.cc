@@ -269,6 +269,8 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 	con.port_id = session_id;
 	timer_task = NULL;
 	cert = NULL;
+	cert_received = false;
+	hello_received = false;
 
 	state = BEGIN;
 }
@@ -461,6 +463,7 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 		return process_server_hello_message(message, session_id);
 	}
 	if (message.obj_class_ == SERVER_CERTIFICATE) {
+		LOG_ERR("SERVER CERTIFICATE oj¡bjecte class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_server_certificate_message(message, session_id);
 	}
 
@@ -493,6 +496,7 @@ int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext
 int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
+	LOG_DBG("entro a process server hello");
 	TLSHandSecurityContext * sc;
 
 	if (message.obj_value_.message_ == 0) {
@@ -528,9 +532,11 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 	//if ha rebut server certificate-< canvi estat , enviar misatges client
 	if(sc->cert_received) {
 		sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
+		LOG_DBG("if process server hello");
 		send_client_certificate(sc);
 
 	}
+	LOG_DBG("end process server hello");
 
 	return IAuthPolicySet::IN_PROGRESS;
 }
@@ -538,6 +544,8 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
+	LOG_DBG("entro a process server certificate");
+
 	TLSHandSecurityContext * sc;
 
 	if (message.obj_value_.message_ == 0) {
@@ -571,15 +579,17 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 	//if ha rebut server certificate-< canvi estat , enviar misatges client
 	if(sc->hello_received) {
 		sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
+		LOG_DBG("if process server certificate");
 		send_client_certificate(sc);
 	}
+	LOG_DBG("end process server certificate");
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
 int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 {
-	LOG_DBG("SEND_CLIENT_CERTIFICATE");
-	return -1;
+	LOG_DBG("SEND_CLIENT_CERTIFICATE FUNCTION");
+	return 0;
 }
 
 int AuthTLSHandPolicySet::set_policy_set_param(const std::string& name,
