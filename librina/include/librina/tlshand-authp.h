@@ -79,11 +79,11 @@ public:
 	static const std::string MY_CERTIFICATE;
 
 
-
         enum State {
         	BEGIN,
-                WAIT_SERVER_HELLO,
-                WAIT_SERVER_CERTIFICATE,
+                WAIT_SERVER_HELLO_and_CERTIFICATE,
+		WAIT_CLIENT_CERTIFICATE_and_KEYS,
+		WAIT_SERVER_CERTIFICATE,
                 DONE
         };
 
@@ -100,8 +100,15 @@ public:
 	std::string keystore_path;
 	std::string keystore_password;
 
-	//berta Certificates
+	//Authentication Certificates
 	std::string certificate_path;
+
+
+
+	//Berta certificates presence
+	bool cert_received;
+	bool hello_received;
+
 
 	/// Encryption policy configuration
 	PolicyConfig encrypt_policy_config;
@@ -149,6 +156,12 @@ public:
 private:
 	int process_server_hello_message(const cdap::CDAPMessage& message,
 					 int session_id);
+	//BERTA
+	int process_server_certificate_message(const cdap::CDAPMessage& message,
+						 int session_id);
+	int send_client_certificate(TLSHandSecurityContext * sc);
+	//FI BERTA
+
 	int load_credentials(TLSHandSecurityContext * sc);
 
 	//Load the authentication certificate required for this DIF from a file
