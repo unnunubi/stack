@@ -411,7 +411,6 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
-	//sc->hello_received = true;
 
 
 	load_authentication_certificate(sc);
@@ -446,7 +445,6 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 		return IAuthPolicySet::FAILED;
 	}
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_HELLO_and_CERTIFICATE;
-	//sc->cert_received = true;
 
 	return IAuthPolicySet::IN_PROGRESS;
 }
@@ -460,6 +458,7 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 	}
 
 	if (message.obj_class_ == SERVER_HELLO) {
+		LOG_ERR("SERVER hello oj¡bjecte class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_server_hello_message(message, session_id);
 	}
 	if (message.obj_class_ == SERVER_CERTIFICATE) {
