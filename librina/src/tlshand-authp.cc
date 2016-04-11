@@ -411,7 +411,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
-	sc->hello_received = true;
+	//sc->hello_received = true;
 
 
 	load_authentication_certificate(sc);
@@ -446,7 +446,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 		return IAuthPolicySet::FAILED;
 	}
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_HELLO_and_CERTIFICATE;
-	sc->cert_received = true;
+	//sc->cert_received = true;
 
 	return IAuthPolicySet::IN_PROGRESS;
 }
@@ -523,6 +523,8 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 	/*sc->timer_task = new CancelAuthTimerTask(sec_man, session_id);
 	timer.scheduleTask(sc->timer_task, timeout);*/
 
+	sc->hello_received = true;
+
 	decode_server_hello_tls_hand(message.obj_value_,
 			sc->server_random,
 			sc->cipher_suite,
@@ -571,6 +573,8 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 	//TIMER????
 	/*sc->timer_task = new CancelAuthTimerTask(sec_man, session_id);
 	timer.scheduleTask(sc->timer_task, timeout);*/
+
+	sc->cert_received = true;
 
 	UcharArray certificate_chain;
 	decode_server_certificate_tls_hand(message.obj_value_,
