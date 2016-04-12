@@ -311,6 +311,7 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 const int AuthTLSHandPolicySet::DEFAULT_TIMEOUT = 10000;
 const std::string AuthTLSHandPolicySet::SERVER_HELLO = "Server Hello";
 const std::string AuthTLSHandPolicySet::SERVER_CERTIFICATE = "Server Certificate";
+const std::string AuthTLSHandPolicySet::CLIENT_CERTIFICATE = "Client Certificate";
 
 AuthTLSHandPolicySet::AuthTLSHandPolicySet(rib::RIBDaemonProxy * ribd,
 		ISecurityManager * sm) :
@@ -497,10 +498,10 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 		LOG_ERR("SERVER CERTIFICATE oj¡bjecte class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_server_certificate_message(message, session_id);
 	}
-	if (message.obj_class_ == CLIENT_CERTIFICATE) {
-			LOG_ERR("client CERTIFICATE oj¡bjecte class"); //ESBORRRRRRRRAAAARRR!!!!
-			return process_client_certificate_message(message, session_id);
-		}
+	/*if (message.obj_class_ == CLIENT_CERTIFICATE) {
+		LOG_ERR("client CERTIFICATE oj¡bjecte class"); //ESBORRRRRRRRAAAARRR!!!!
+		return process_client_certificate_message(message, session_id);
+	}*/
 
 	return rina::IAuthPolicySet::FAILED;
 }
