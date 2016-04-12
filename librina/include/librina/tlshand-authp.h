@@ -83,7 +83,7 @@ public:
         	BEGIN,
                 WAIT_SERVER_HELLO_and_CERTIFICATE,
 		WAIT_CLIENT_CERTIFICATE_and_KEYS,
-		WAIT_SERVER_CERTIFICATE,
+		//WAIT_SERVER_CERTIFICATE,
                 DONE
         };
 
@@ -136,6 +136,7 @@ public:
 	static const int MIN_RSA_KEY_PAIR_LENGTH;
 	static const std::string SERVER_HELLO;
 	static const std::string SERVER_CERTIFICATE;
+	static const std::string CLIENT_CERTIFICATE;
 
 	AuthTLSHandPolicySet(rib::RIBDaemonProxy * ribd,
 			     ISecurityManager * sm);
@@ -159,6 +160,9 @@ private:
 	//BERTA
 	int process_server_certificate_message(const cdap::CDAPMessage& message,
 						 int session_id);
+	int process_client_certificate_message(const cdap::CDAPMessage& message,
+							 int session_id);
+	int process_client_messages(TLSHandSecurityContext * sc);
 	int send_client_certificate(TLSHandSecurityContext * sc);
 	//FI BERTA
 

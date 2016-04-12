@@ -171,6 +171,38 @@ void decode_server_certificate_tls_hand(const ser_obj_t &message,
 	}
 }
 
+//Client certificate
+void encode_client_certificate_tls_hand(const UcharArray& certificate_chain,
+		ser_obj_t& result)
+{
+	rina::auth::policies::googleprotobuf::clientCertificateTLSHandshake_t gpb_ccertificate;
+
+	gpb_ccertificate.set_certificate_chain(certificate_chain.data, certificate_chain.length);
+
+	int size = gpb_ccertificate.ByteSize();
+	result.message_ = new unsigned char[size];
+	result.size_ = size;
+	gpb_ccertificate.SerializeToArray(result.message_ , size);
+}
+
+void decode_client_certificate_tls_hand(const ser_obj_t &message,
+		 UcharArray& certificate_chain)
+{
+	rina::auth::policies::googleprotobuf::clientCertificateTLSHandshake_t gpb_ccertificate;
+
+	gpb_ccertificate.ParseFromArray(message.message_, message.size_);
+
+	//certificate_chain = gpb_scertificate.certificate_chain().data();
+	if (gpb_ccertificate.has_certificate_chain()) {
+		certificate_chain.data =  new unsigned char[gpb_ccertificate.certificate_chain().size()];
+		memcpy(certificate_chain.data,
+				gpb_ccertificate.certificate_chain().data(),
+				gpb_ccertificate.certificate_chain().size());
+		certificate_chain.length = gpb_ccertificate.certificate_chain().size();
+	}
+}
+
+
 
 // Class TLSHandSecurityContext
 const std::string TLSHandSecurityContext::CIPHER_SUITE = "cipherSuite";
@@ -465,6 +497,10 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 		LOG_ERR("SERVER CERTIFICATE oj¡bjecte class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_server_certificate_message(message, session_id);
 	}
+	if (message.obj_class_ == CLIENT_CERTIFICATE) {
+			LOG_ERR("client CERTIFICATE oj¡bjecte class"); //ESBORRRRRRRRAAAARRR!!!!
+			return process_client_certificate_message(message, session_id);
+		}
 
 	return rina::IAuthPolicySet::FAILED;
 }
@@ -534,7 +570,7 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 	if(sc->cert_received) {
 		sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
 		LOG_DBG("if process server hello");
-		send_client_certificate(sc);
+		return send_client_certificate(sc);
 
 	}
 	LOG_DBG("end process server hello");
@@ -583,15 +619,111 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 	if(sc->hello_received) {
 		sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
 		LOG_DBG("if process server certificate");
-		send_client_certificate(sc);
+		return send_client_certificate(sc);
 	}
 	LOG_DBG("end process server certificate");
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
+int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMessage& message,
+		int session_id)
+{
+	LOG_DBG("entro a process client certificate");
+
+	TLSHandSecurityContext * sc;
+
+	if (message.obj_value_.message_ == 0) {
+		LOG_ERR("Null object value");
+		return IAuthPolicySet::FAILED;
+	}
+
+	sc = dynamic_cast<TLSHandSecurityContext *>(sec_man->get_security_context(session_id));
+	if (!sc) {
+		LOG_ERR("Could not retrieve Security Context for session: %d", session_id);
+		return IAuthPolicySet::FAILED;
+	}
+
+	ScopedLock sc_lock(lock);
+
+	if (sc->state != TLSHandSecurityContext::WAIT_SERVER_HELLO_and_CERTIFICATE) {
+		LOG_ERR("Wrong session state: %d", sc->state);
+		sec_man->remove_security_context(session_id);
+		delete sc;
+		return IAuthPolicySet::FAILED;
+	}
+
+	//TIMER????
+	/*sc->timer_task = new CancelAuthTimerTask(sec_man, session_id);
+	timer.scheduleTask(sc->timer_task, timeout);*/
+
+	UcharArray certificate_chain;
+	decode_server_certificate_tls_hand(message.obj_value_, certificate_chain);
+
+	/*sc->cert_received = true;
+	//if ha rebut server certificate-< canvi estat , enviar misatges client
+	if(sc->hello_received) {
+		sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
+		LOG_DBG("if process server certificate");
+		return send_client_certificate(sc);
+	}*/
+	LOG_DBG("end process client certificate");
+	return IAuthPolicySet::IN_PROGRESS;
+}
+
 int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 {
+
+	load_authentication_certificate(sc); //tornara a carregar el mateix :/
+	//convert x509
+	UcharArray encoded_cert;
+	encoded_cert.length = i2d_X509(sc->cert, &encoded_cert.data);
+	if (encoded_cert.length < 0)
+		LOG_ERR("Error converting certificate");
+
+	//Send server certificate
+	try {
+		cdap_rib::flags_t flags;
+		cdap_rib::filt_info_t filt;
+		cdap_rib::obj_info_t obj_info;
+		cdap::StringEncoder encoder;
+
+		obj_info.class_ = CLIENT_CERTIFICATE;
+		obj_info.name_ = CLIENT_CERTIFICATE;
+		obj_info.inst_ = 0;
+		encode_client_certificate_tls_hand(encoded_cert,
+				obj_info.value_);
+
+		rib_daemon->remote_write(sc->con,
+				obj_info,
+				flags,
+				filt,
+				NULL);
+	} catch (Exception &e) {
+		LOG_ERR("Problems encoding and sending CDAP message: %s",
+				e.what());
+		sec_man->destroy_security_context(sc->id);
+		return IAuthPolicySet::FAILED;
+	}
+	sc->state = TLSHandSecurityContext::WAIT_SERVER_HELLO_and_CERTIFICATE; //canviar a un de nou o no cal???
+
+	return IAuthPolicySet::IN_PROGRESS;
+
+}
+
+int AuthTLSHandPolicySet::process_client_messages(TLSHandSecurityContext * sc)
+{
+	//canviar estat, a wait el que sigui i fer tres funcions que cfacin dels tres misatges corresponents
 	LOG_DBG("SEND_CLIENT_CERTIFICATE FUNCTION");
+
+	if (sc->state != TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS) {
+		LOG_ERR("Wrong state of policy");
+		sec_man->destroy_security_context(sc->id);
+		return IAuthPolicySet::FAILED;
+	}
+
+	//Send first message corresponding to the client_certificate
+	send_client_certificate(sc);
+
 	return 0;
 }
 

@@ -38,3 +38,6 @@ message serverCertificateTLSHandshake_t {
 	optional bytes certificate_chain = 1;			// The encoded certificate chain
 }
 	
+message clientCertificateTLSHandshake_t {
+	optional bytes certificate_chain = 1;			// The encoded certificate chain
+}	
