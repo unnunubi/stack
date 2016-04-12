@@ -570,7 +570,7 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 	if(sc->cert_received) {
 		sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
 		LOG_DBG("if process server hello");
-		return send_client_certificate(sc);
+		return process_client_messages(sc);
 
 	}
 	LOG_DBG("end process server hello");
@@ -619,7 +619,7 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 	if(sc->hello_received) {
 		sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
 		LOG_DBG("if process server certificate");
-		return send_client_certificate(sc);
+		return process_client_messages(sc);
 	}
 	LOG_DBG("end process server certificate");
 	return IAuthPolicySet::IN_PROGRESS;
@@ -657,16 +657,16 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 	timer.scheduleTask(sc->timer_task, timeout);*/
 
 	UcharArray certificate_chain;
-	decode_server_certificate_tls_hand(message.obj_value_, certificate_chain);
+	decode_client_certificate_tls_hand(message.obj_value_, certificate_chain);
 
 	/*sc->cert_received = true;
 	//if ha rebut server certificate-< canvi estat , enviar misatges client
 	if(sc->hello_received) {
 		sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
 		LOG_DBG("if process server certificate");
-		return send_client_certificate(sc);
+		return process_client_messages(sc);
 	}*/
-	LOG_DBG("end process client certificate");
+	LOG_DBG("end decode process client certificate");
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
@@ -680,7 +680,7 @@ int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 	if (encoded_cert.length < 0)
 		LOG_ERR("Error converting certificate");
 
-	//Send server certificate
+	//Send client certificate
 	try {
 		cdap_rib::flags_t flags;
 		cdap_rib::filt_info_t filt;
@@ -704,8 +704,8 @@ int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
-	sc->state = TLSHandSecurityContext::WAIT_SERVER_HELLO_and_CERTIFICATE; //canviar a un de nou o no cal???
-
+	//sc->state = TLSHandSecurityContext::WAIT_SERVER_HELLO_and_CERTIFICATE; //canviar a un de nou o no cal???
+	LOG_ERR("endind send_client_certificate_function");
 	return IAuthPolicySet::IN_PROGRESS;
 
 }
@@ -713,7 +713,7 @@ int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 int AuthTLSHandPolicySet::process_client_messages(TLSHandSecurityContext * sc)
 {
 	//canviar estat, a wait el que sigui i fer tres funcions que cfacin dels tres misatges corresponents
-	LOG_DBG("SEND_CLIENT_CERTIFICATE FUNCTION");
+	LOG_DBG("process_client_3messages FUNCTION");
 
 	if (sc->state != TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS) {
 		LOG_ERR("Wrong state of policy");
