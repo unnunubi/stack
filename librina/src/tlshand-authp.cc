@@ -492,15 +492,13 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 	}
 
 	if (message.obj_class_ == SERVER_HELLO) {
-		LOG_ERR("SERVER hello oj¡bjecte class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_server_hello_message(message, session_id);
 	}
 	if (message.obj_class_ == SERVER_CERTIFICATE) {
-		LOG_ERR("SERVER CERTIFICATE oj¡bjecte class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_server_certificate_message(message, session_id);
 	}
 	if (message.obj_class_ == CLIENT_CERTIFICATE) {
-		LOG_ERR("client CERTIFICATE oj¡bjecte class"); //ESBORRRRRRRRAAAARRR!!!!
+		LOG_DBG("client CERTIFICATE oj¡bjecte class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_client_certificate_message(message, session_id);
 	}
 
@@ -632,8 +630,7 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
-	LOG_DBG("entro a process client certificate");
-	LOG_DBG("need to be checked, sobretot sc-> state");
+	LOG_DBG("RESPASSAR els bools i el  sc-> state");
 
 	TLSHandSecurityContext * sc;
 
@@ -665,13 +662,11 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 	decode_client_certificate_tls_hand(message.obj_value_, certificate_chain);
 
 	/*sc->cert_received = true;
-	//if ha rebut server certificate-< canvi estat , enviar misatges client
 	if(sc->hello_received) {
 		sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
 		LOG_DBG("if process server certificate");
 		return process_client_messages(sc);
 	}*/
-	LOG_DBG("end decode process client certificate, EEEEEEEEND 12-4");
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
@@ -710,9 +705,12 @@ int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 		return IAuthPolicySet::FAILED;
 	}
 	//sc->state = TLSHandSecurityContext::WAIT_SERVER_HELLO_and_CERTIFICATE; //canviar a un de nou o no cal???
-	LOG_ERR("endind send_client_certificate_function");
 	return IAuthPolicySet::IN_PROGRESS;
 
+}
+int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc){
+	LOG_DBG("need to do client_key_exchange");
+	return IAuthPolicySet::IN_PROGRESS;
 }
 
 int AuthTLSHandPolicySet::process_client_messages(TLSHandSecurityContext * sc)
@@ -729,7 +727,10 @@ int AuthTLSHandPolicySet::process_client_messages(TLSHandSecurityContext * sc)
 	//Send first message corresponding to the client_certificate
 	send_client_certificate(sc);
 
-	return 0;
+	//Send second message corresponding to client_key_exchange
+	send_client_key_exchange(sc);
+
+	return IAuthPolicySet::IN_PROGRESS;
 }
 
 int AuthTLSHandPolicySet::set_policy_set_param(const std::string& name,

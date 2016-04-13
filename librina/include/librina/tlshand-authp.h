@@ -165,6 +165,7 @@ private:
 							 int session_id);
 	int process_client_messages(TLSHandSecurityContext * sc);
 	int send_client_certificate(TLSHandSecurityContext * sc);
+	int send_client_key_exchange(TLSHandSecurityContext * sc);
 	//FI BERTA
 
 	int load_credentials(TLSHandSecurityContext * sc);
