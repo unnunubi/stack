@@ -77,7 +77,6 @@ public:
 	//Berta
 	static const std::string CERTIFICATE_PATH;
 	static const std::string MY_CERTIFICATE;
-	static const std::string MY_CLIENT_CERTIFICATE;
 
 
         enum State {
@@ -171,7 +170,7 @@ private:
 	int load_credentials(TLSHandSecurityContext * sc);
 
 	//Load the authentication certificate required for this DIF from a file
-	int load_authentication_certificate(TLSHandSecurityContext * sc, int choose);
+	int load_authentication_certificate(TLSHandSecurityContext * sc);
 
 	rib::RIBDaemonProxy * rib_daemon;
 	ISecurityManager * sec_man;

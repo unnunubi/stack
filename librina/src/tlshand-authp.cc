@@ -213,7 +213,6 @@ const std::string TLSHandSecurityContext::KEYSTORE_PASSWORD = "keystorePass";
 //Berta
 const std::string TLSHandSecurityContext::CERTIFICATE_PATH = "myCredentials";
 const std::string TLSHandSecurityContext::MY_CERTIFICATE = "certificate.pem";
-const std::string TLSHandSecurityContext::MY_CLIENT_CERTIFICATE = "client_certificate.pem";
 
 
 TLSHandSecurityContext::~TLSHandSecurityContext()
@@ -447,7 +446,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	}
 
 
-	load_authentication_certificate(sc, 1);
+	load_authentication_certificate(sc);
 	//convert x509
 	UcharArray encoded_cert;
 	encoded_cert.length = i2d_X509(sc->cert, &encoded_cert.data);
@@ -505,14 +504,13 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 	return rina::IAuthPolicySet::FAILED;
 }
 
-int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext * sc, int choose)
+int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext * sc)
 {
 	BIO * certstore;
 	LOG_DBG("Start loading certificate");
 	std::stringstream ss;
 
-	if (choose == 1) ss << sc->certificate_path.c_str() << "/" << TLSHandSecurityContext::MY_CERTIFICATE;
-	if (choose == 2) ss << sc->certificate_path.c_str() << "/" << TLSHandSecurityContext::MY_CLIENT_CERTIFICATE;
+	ss << sc->certificate_path.c_str() << "/" << TLSHandSecurityContext::MY_CERTIFICATE;
 
 	certstore =  BIO_new_file(ss.str().c_str(),  "r");
 	if (!certstore) {
@@ -673,7 +671,7 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 {
 
-	load_authentication_certificate(sc,2); //tornara a carregar el mateix :/
+	load_authentication_certificate(sc); //tornara a carregar el mateix :/
 	//convert x509
 	UcharArray encoded_cert;
 	encoded_cert.length = i2d_X509(sc->cert, &encoded_cert.data);
