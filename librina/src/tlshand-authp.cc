@@ -477,7 +477,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 		rib_daemon->remote_write(sc->con, obj_info, flags, filt, NULL);
 	} catch (Exception &e) {
 		LOG_ERR("Problems encoding and sending CDAP message: %s", e.what());
-		sec_man->destroy_security_context(sc->id);
+		delete sc;
 		return IAuthPolicySet::FAILED;
 	}
 
@@ -510,10 +510,11 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	} catch (Exception &e) {
 		LOG_ERR("Problems encoding and sending CDAP message: %s",
 				e.what());
-		sec_man->destroy_security_context(sc->id);
+		delete sc;
 		return IAuthPolicySet::FAILED;
 	}
-	sc->state = TLSHandSecurityContext::WAIT_SERVER_HELLO_and_CERTIFICATE;
+	sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
+	sec_man->add_security_context(sc);
 
 	return IAuthPolicySet::IN_PROGRESS;
 }
