@@ -24,7 +24,13 @@
 #include <openssl/pem.h>
 #include <openssl/rand.h>
 
+//BERTA
+#include <openssl/evp.h>
 #include <openssl/x509.h>
+#include <openssl/bio.h>
+#include <openssl/err.h>
+#include <openssl/x509_vfy.h>
+
 
 
 #define RINA_PREFIX "librina.tls-handshake"
@@ -201,6 +207,36 @@ void decode_client_certificate_tls_hand(const ser_obj_t &message,
 		certificate_chain.length = gpb_ccertificate.certificate_chain().size();
 	}
 }
+//Client key_exchange
+void encode_client_key_exchange_tls_hand(const UcharArray& enc_pmaster_secret,
+		ser_obj_t& result)
+{
+	rina::auth::policies::googleprotobuf::clientKeyExchangeTLSHandshake_t gpb_key_exchange;
+
+	gpb_key_exchange.set_enc_pmaster_secret(enc_pmaster_secret.data, enc_pmaster_secret.length);
+
+	int size = gpb_key_exchange.ByteSize();
+	result.message_ = new unsigned char[size];
+	result.size_ = size;
+	gpb_key_exchange.SerializeToArray(result.message_ , size);
+}
+
+void decode_client_key_exchange_tls_hand(const ser_obj_t &message,
+		 UcharArray& enc_pmaster_secret)
+{
+	rina::auth::policies::googleprotobuf::clientKeyExchangeTLSHandshake_t gpb_key_exchange;
+
+	gpb_key_exchange.ParseFromArray(message.message_, message.size_);
+
+		//certificate_chain = gpb_scertificate.certificate_chain().data();
+		if (gpb_key_exchange.has_enc_pmaster_secret()) {
+			enc_pmaster_secret.data =  new unsigned char[gpb_key_exchange.enc_pmaster_secret().size()];
+			memcpy(enc_pmaster_secret.data,
+					gpb_key_exchange.enc_pmaster_secret().data(),
+					gpb_key_exchange.enc_pmaster_secret().size());
+			enc_pmaster_secret.length = gpb_key_exchange.enc_pmaster_secret().size();
+		}
+}
 
 
 
@@ -312,6 +348,7 @@ const int AuthTLSHandPolicySet::DEFAULT_TIMEOUT = 10000;
 const std::string AuthTLSHandPolicySet::SERVER_HELLO = "Server Hello";
 const std::string AuthTLSHandPolicySet::SERVER_CERTIFICATE = "Server Certificate";
 const std::string AuthTLSHandPolicySet::CLIENT_CERTIFICATE = "Client Certificate";
+const std::string AuthTLSHandPolicySet::CLIENT_KEY_EXCHANGE = "Client key exchange";
 
 AuthTLSHandPolicySet::AuthTLSHandPolicySet(rib::RIBDaemonProxy * ribd,
 		ISecurityManager * sm) :
@@ -500,6 +537,10 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 		LOG_DBG("client CERTIFICATE oj¡bjecte class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_client_certificate_message(message, session_id);
 	}
+	if (message.obj_class_ == CLIENT_KEY_EXCHANGE) {
+		LOG_DBG("client key_echange oj¡bjecte class"); //ESBORRRRRRRRAAAARRR!!!!
+		return process_client_key_exchange_message(message, session_id);
+	}
 
 	return rina::IAuthPolicySet::FAILED;
 }
@@ -667,6 +708,12 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 	}*/
 	return IAuthPolicySet::IN_PROGRESS;
 }
+int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMessage& message,
+		int session_id)
+{
+	return IAuthPolicySet::IN_PROGRESS;
+
+}
 
 int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 {
@@ -708,7 +755,68 @@ int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 }
 int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc){
 	LOG_DBG("need to do client_key_exchange");
+	//generar 48bytes rand, extreure pubkey, rsa_encrypt i enviar!
+	//de l'laltre banda rebre, rsa_decrypt i veure si els dos logs donen igual :)
+
+	UcharArray pre_master_secret;
+	pre_master_secret.data[48] = 0;
+
+	EVP_PKEY *pkey = NULL;
+	RSA *rsa_pkey = NULL;
+
+	if(RAND_bytes(pre_master_secret.data, sizeof(pre_master_secret.data)) != 1)
+		LOG_ERR("Problems generating random bytes");
+
+	//printar el random
+	LOG_DBG("pre_master_secret.data:"  );
+
+	//extreurepubkey
+	if ((pkey = X509_get_pubkey(sc->cert)) == NULL)
+		LOG_DBG("Error getting public key from certificate");
+
+
+	rsa_pkey = EVP_PKEY_get1_RSA(pkey);
+	if(rsa_pkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
+
+	int res = -1;
+	if((res = RSA_public_encrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_PKCS1_PADDING)) == -1)
+		LOG_ERR("Error encrypting pre-master secret");
+
+
+
+	//es necessari??? free pkey
+	EVP_PKEY_free(pkey);
+
+	//Send client key exchange
+	try {
+		cdap_rib::flags_t flags;
+		cdap_rib::filt_info_t filt;
+		cdap_rib::obj_info_t obj_info;
+		cdap::StringEncoder encoder;
+
+		obj_info.class_ = CLIENT_KEY_EXCHANGE;
+		obj_info.name_ = CLIENT_KEY_EXCHANGE;
+		obj_info.inst_ = 0;
+		encode_client_key_exchange_tls_hand(pre_master_secret,
+				obj_info.value_);
+
+		rib_daemon->remote_write(sc->con,
+				obj_info,
+				flags,
+				filt,
+				NULL);
+	} catch (Exception &e) {
+		LOG_ERR("Problems encoding and sending CDAP message: %s",
+				e.what());
+		sec_man->destroy_security_context(sc->id);
+		return IAuthPolicySet::FAILED;
+	}
+
+	//sc->state = TLSHandSecurityContext::WAIT_SERVER_HELLO_and_CERTIFICATE; //canviar a un de nou o no cal???
+
 	return IAuthPolicySet::IN_PROGRESS;
+
+
 }
 
 int AuthTLSHandPolicySet::process_client_messages(TLSHandSecurityContext * sc)
