@@ -742,11 +742,28 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 	//decrypt pre master secret
 	RSA *rsa_pkey = NULL;
+	EVP_PKEY *pkey = NULL;
 
 	LOG_DBG("principi rsa public decrytion");
+
+	//prova hauria de esborrarse i pasar la pkey que pertoca
+	if ((pkey = X509_get_pubkey(sc->cert)) == NULL)
+		LOG_DBG("Error getting public key from certificate");
+
+
+	rsa_pkey = EVP_PKEY_get1_RSA(pkey);
+	if(rsa_pkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
+
 	int res = -1;
-	if((res = RSA_public_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_PKCS1_PADDING)) == -1)
-			LOG_ERR("Error decrypting pre-master secret");
+	char err[130] = "0";
+
+	if((res = RSA_public_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_NO_PADDING)) == -1){
+		LOG_ERR("Error decrypting pre-master secret");
+		ERR_load_crypto_strings();
+		ERR_error_string(ERR_get_error(), err);
+		LOG_ERR("Error encrypting message: %s\n", err);
+	}
+
 
 	LOG_DBG("pre_master_secret.length:" "%d", pre_master_secret.length);
 	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
@@ -828,7 +845,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	if(rsa_pkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
 
 	int res = -1;
-	if((res = RSA_public_encrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_PKCS1_PADDING)) == -1)
+	if((res = RSA_public_encrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_NO_PADDING)) == -1)
 		LOG_ERR("Error encrypting pre-master secret");
 
 
