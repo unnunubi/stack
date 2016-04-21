@@ -758,15 +758,15 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc){
 	//generar 48bytes rand, extreure pubkey, rsa_encrypt i enviar!
 	//de l'laltre banda rebre, rsa_decrypt i veure si els dos logs donen igual :)
 
-	UcharArray pre_master_secret;
-	pre_master_secret.length = 48;
+	UcharArray pre_master_secret(48);
 	LOG_DBG("despres de init .length");
 
 	EVP_PKEY *pkey = NULL;
 	RSA *rsa_pkey = NULL;
 
+	LOG_DBG("despres de init keys");
 	//RAND_bytes(pre_master_secret.data, sizeof(pre_master_secret.data)) != 1)
-	if(RAND_bytes(pre_master_secret.data, sizeof(pre_master_secret.length)) != 1)
+	if(RAND_bytes(pre_master_secret.data, pre_master_secret.length) != 1)
 		LOG_ERR("Problems generating random bytes");
 
 	//printar el random
