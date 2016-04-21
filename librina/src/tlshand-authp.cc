@@ -759,12 +759,14 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc){
 	//de l'laltre banda rebre, rsa_decrypt i veure si els dos logs donen igual :)
 
 	UcharArray pre_master_secret;
-	pre_master_secret.data[48] = 0;
+	pre_master_secret.length = 48;
+	LOG_DBG("despres de init .length");
 
 	EVP_PKEY *pkey = NULL;
 	RSA *rsa_pkey = NULL;
 
-	if(RAND_bytes(pre_master_secret.data, sizeof(pre_master_secret.data)) != 1)
+	//RAND_bytes(pre_master_secret.data, sizeof(pre_master_secret.data)) != 1)
+	if(RAND_bytes(pre_master_secret.data, sizeof(pre_master_secret.length)) != 1)
 		LOG_ERR("Problems generating random bytes");
 
 	//printar el random
@@ -786,6 +788,8 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc){
 
 	//es necessari??? free pkey
 	EVP_PKEY_free(pkey);
+
+	LOG_DBG("abans denviar client key exchange");
 
 	//Send client key exchange
 	try {
@@ -813,6 +817,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc){
 	}
 
 	//sc->state = TLSHandSecurityContext::WAIT_SERVER_HELLO_and_CERTIFICATE; //canviar a un de nou o no cal???
+	LOG_DBG("end client key exchange");
 
 	return IAuthPolicySet::IN_PROGRESS;
 
