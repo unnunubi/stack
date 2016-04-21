@@ -668,7 +668,7 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
-	LOG_DBG("RESPASSAR els bools i el  sc-> state");
+	LOG_DBG("repassar bols, init process client certificate");
 
 	TLSHandSecurityContext * sc;
 
@@ -685,12 +685,12 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 
 	ScopedLock sc_lock(lock);
 
-	if (sc->state != TLSHandSecurityContext::WAIT_SERVER_HELLO_and_CERTIFICATE) {
+	/*if (sc->state != TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS) {
 		LOG_ERR("Wrong session state: %d", sc->state);
 		sec_man->remove_security_context(session_id);
 		delete sc;
 		return IAuthPolicySet::FAILED;
-	}
+	}*/
 
 	//TIMER????
 	/*sc->timer_task = new CancelAuthTimerTask(sec_man, session_id);
@@ -699,12 +699,8 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 	UcharArray certificate_chain;
 	decode_client_certificate_tls_hand(message.obj_value_, certificate_chain);
 
-	/*sc->cert_received = true;
-	if(sc->hello_received) {
-		sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
-		LOG_DBG("if process server certificate");
-		return process_client_messages(sc);
-	}*/
+	LOG_DBG("fi process client certificate");
+
 	return IAuthPolicySet::IN_PROGRESS;
 }
 int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMessage& message,
