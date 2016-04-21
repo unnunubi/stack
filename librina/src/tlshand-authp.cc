@@ -737,17 +737,18 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	/*sc->timer_task = new CancelAuthTimerTask(sec_man, session_id);
 		timer.scheduleTask(sc->timer_task, timeout);*/
 
-	UcharArray pre_master_secret;
+	UcharArray pre_master_secret(48);
 	decode_client_key_exchange_tls_hand(message.obj_value_, pre_master_secret);
 
 	//decrypt pre master secret
-
 	RSA *rsa_pkey = NULL;
 
+	LOG_DBG("principi rsa public decrytion");
 	int res = -1;
 	if((res = RSA_public_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_PKCS1_PADDING)) == -1)
 			LOG_ERR("Error decrypting pre-master secret");
 
+	LOG_DBG("pre_master_secret.length:" "%d", pre_master_secret.length);
 	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
 
 	//example
