@@ -228,7 +228,6 @@ void decode_client_key_exchange_tls_hand(const ser_obj_t &message,
 
 	gpb_key_exchange.ParseFromArray(message.message_, message.size_);
 
-		//certificate_chain = gpb_scertificate.certificate_chain().data();
 		if (gpb_key_exchange.has_enc_pmaster_secret()) {
 			enc_pmaster_secret.data =  new unsigned char[gpb_key_exchange.enc_pmaster_secret().size()];
 			memcpy(enc_pmaster_secret.data,
@@ -711,6 +710,7 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
+	LOG_DBG("ini process_client key exchange");
 	TLSHandSecurityContext * sc;
 
 	if (message.obj_value_.message_ == 0) {
@@ -751,15 +751,6 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	LOG_DBG("pre_master_secret.length:" "%d", pre_master_secret.length);
 	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
 
-	//example
-	/*char *decrypt = malloc(RSA_size(keypair));
-	if(RSA_private_decrypt(encrypt_len, (unsigned char*)encrypt, (unsigned char*)decrypt, keypair, RSA_PKCS1_OAEP_PADDING) == -1) {
-		ERR_load_crypto_strings();
-		ERR_error_string(ERR_get_error(), err);
-		fprintf(stderr, "Error decrypting message: %s\n", err);
-	} else {
-		printf("Decrypted message: %d", decrypt);
-	}*/
 
 	/*sc->cert_received = true;
 		if(sc->hello_received) {
