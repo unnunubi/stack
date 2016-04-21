@@ -653,12 +653,11 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 	sc->cert_received = true;
 
 	UcharArray certificate_chain;
-	decode_server_certificate_tls_hand(message.obj_value_,
-			certificate_chain);
+	decode_server_certificate_tls_hand(message.obj_value_,certificate_chain);
 
 	//if ha rebut server certificate-< canvi estat , enviar misatges client
 	if(sc->hello_received) {
-		sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
+		sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS; //aixo no esta be?
 		LOG_DBG("if process server certificate");
 		return process_client_messages(sc);
 	}
@@ -741,40 +740,32 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	decode_client_key_exchange_tls_hand(message.obj_value_, pre_master_secret);
 
 	//decrypt pre master secret
-	RSA *rsa_pkey = NULL;
 	EVP_PKEY *pkey = NULL;
-
-	LOG_DBG("principi rsa public decrytion");
-
-	//prova hauria de esborrarse i pasar la pkey que pertoca
-	if ((pkey = X509_get_pubkey(sc->cert)) == NULL)
-		LOG_DBG("Error getting public key from certificate");
-
-
-	rsa_pkey = EVP_PKEY_get1_RSA(pkey);
-	if(rsa_pkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
-
+	RSA *rsa_pkey = NULL;
 	int res = -1;
 	char err[130] = "0";
 
-	if((res = RSA_public_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_NO_PADDING)) == -1){
+	LOG_DBG("principi rsa public decrytion");
+
+	//extreurepubkey
+	if ((pkey = X509_get_pubkey(sc->cert)) == NULL)	LOG_DBG("Error getting public key from certificate");
+	rsa_pkey = EVP_PKEY_get1_RSA(pkey);
+
+	if(rsa_pkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
+
+	if((res =  RSA_public_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_PKCS1_PADDING)) == -1){
 		LOG_ERR("Error decrypting pre-master secret");
 		ERR_load_crypto_strings();
 		ERR_error_string(ERR_get_error(), err);
 		LOG_ERR("Error encrypting message: %s\n", err);
 	}
 
+	EVP_PKEY_free(pkey); //necesrai?
+
 
 	LOG_DBG("pre_master_secret.length:" "%d", pre_master_secret.length);
 	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
 
-
-	/*sc->cert_received = true;
-		if(sc->hello_received) {
-			sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
-			LOG_DBG("if process server certificate");
-			return process_client_messages(sc);
-		}*/
 	LOG_DBG("fi process keys");
 	return IAuthPolicySet::IN_PROGRESS;
 
@@ -845,7 +836,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	if(rsa_pkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
 
 	int res = -1;
-	if((res = RSA_public_encrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_NO_PADDING)) == -1)
+	if((res = RSA_public_encrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_PKCS1_PADDING)) == -1)
 		LOG_ERR("Error encrypting pre-master secret");
 
 
