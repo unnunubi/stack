@@ -711,6 +711,61 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
+	TLSHandSecurityContext * sc;
+
+	if (message.obj_value_.message_ == 0) {
+		LOG_ERR("Null object value");
+		return IAuthPolicySet::FAILED;
+	}
+
+	sc = dynamic_cast<TLSHandSecurityContext *>(sec_man->get_security_context(session_id));
+	if (!sc) {
+		LOG_ERR("Could not retrieve Security Context for session: %d", session_id);
+		return IAuthPolicySet::FAILED;
+	}
+
+	ScopedLock sc_lock(lock);
+
+	if (sc->state != TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS) {
+		LOG_ERR("Wrong session state: %d", sc->state);
+		sec_man->remove_security_context(session_id);
+		delete sc;
+		return IAuthPolicySet::FAILED;
+	}
+
+	//TIMER????
+	/*sc->timer_task = new CancelAuthTimerTask(sec_man, session_id);
+		timer.scheduleTask(sc->timer_task, timeout);*/
+
+	UcharArray pre_master_secret;
+	decode_client_key_exchange_tls_hand(message.obj_value_, pre_master_secret);
+
+	//decrypt pre master secret
+
+	RSA *rsa_pkey = NULL;
+
+	int res = -1;
+	if((res = RSA_public_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_PKCS1_PADDING)) == -1)
+			LOG_ERR("Error decrypting pre-master secret");
+
+	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
+
+	//example
+	/*char *decrypt = malloc(RSA_size(keypair));
+	if(RSA_private_decrypt(encrypt_len, (unsigned char*)encrypt, (unsigned char*)decrypt, keypair, RSA_PKCS1_OAEP_PADDING) == -1) {
+		ERR_load_crypto_strings();
+		ERR_error_string(ERR_get_error(), err);
+		fprintf(stderr, "Error decrypting message: %s\n", err);
+	} else {
+		printf("Decrypted message: %d", decrypt);
+	}*/
+
+	/*sc->cert_received = true;
+		if(sc->hello_received) {
+			sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
+			LOG_DBG("if process server certificate");
+			return process_client_messages(sc);
+		}*/
 	return IAuthPolicySet::IN_PROGRESS;
 
 }
@@ -754,23 +809,20 @@ int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 
 }
 int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc){
-	LOG_DBG("need to do client_key_exchange");
+	LOG_DBG("enter to client key exchange");
 	//generar 48bytes rand, extreure pubkey, rsa_encrypt i enviar!
 	//de l'laltre banda rebre, rsa_decrypt i veure si els dos logs donen igual :)
 
 	UcharArray pre_master_secret(48);
-	LOG_DBG("despres de init .length");
 
 	EVP_PKEY *pkey = NULL;
 	RSA *rsa_pkey = NULL;
 
-	LOG_DBG("despres de init keys");
-	//RAND_bytes(pre_master_secret.data, sizeof(pre_master_secret.data)) != 1)
 	if(RAND_bytes(pre_master_secret.data, pre_master_secret.length) != 1)
 		LOG_ERR("Problems generating random bytes");
 
 	//printar el random
-	LOG_DBG("pre_master_secret.data:"  );
+	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
 
 	//extreurepubkey
 	if ((pkey = X509_get_pubkey(sc->cert)) == NULL)
@@ -785,11 +837,9 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc){
 		LOG_ERR("Error encrypting pre-master secret");
 
 
-
 	//es necessari??? free pkey
 	EVP_PKEY_free(pkey);
 
-	LOG_DBG("abans denviar client key exchange");
 
 	//Send client key exchange
 	try {
@@ -817,7 +867,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc){
 	}
 
 	//sc->state = TLSHandSecurityContext::WAIT_SERVER_HELLO_and_CERTIFICATE; //canviar a un de nou o no cal???
-	LOG_DBG("end client key exchange");
+	LOG_DBG("fi client key exchange");
 
 	return IAuthPolicySet::IN_PROGRESS;
 
