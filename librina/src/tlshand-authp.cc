@@ -537,7 +537,7 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 		return process_client_certificate_message(message, session_id);
 	}
 	if (message.obj_class_ == CLIENT_KEY_EXCHANGE) {
-		LOG_DBG("client key_echange oj¡bjecte class"); //ESBORRRRRRRRAAAARRR!!!!
+		LOG_DBG("client key_echange OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_client_key_exchange_message(message, session_id);
 	}
 
@@ -668,7 +668,7 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
-	LOG_DBG("repassar bols, init process client certificate");
+	LOG_DBG("entro a process client certificate");
 
 	TLSHandSecurityContext * sc;
 
@@ -685,28 +685,31 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 
 	ScopedLock sc_lock(lock);
 
-	/*if (sc->state != TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS) {
+	if (sc->state != TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS) {
 		LOG_ERR("Wrong session state: %d", sc->state);
 		sec_man->remove_security_context(session_id);
 		delete sc;
 		return IAuthPolicySet::FAILED;
-	}*/
+	}
 
 	//TIMER????
 	/*sc->timer_task = new CancelAuthTimerTask(sec_man, session_id);
-	timer.scheduleTask(sc->timer_task, timeout);*/
+		timer.scheduleTask(sc->timer_task, timeout);*/
 
 	UcharArray certificate_chain;
-	decode_client_certificate_tls_hand(message.obj_value_, certificate_chain);
+	decode_client_certificate_tls_hand(message.obj_value_,
+			certificate_chain);			////canviar!!
 
-	LOG_DBG("fi process client certificate");
 
+	LOG_DBG("end process client certificate");
 	return IAuthPolicySet::IN_PROGRESS;
+
 }
 int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
 	LOG_DBG("ini process_client key exchange");
+
 	TLSHandSecurityContext * sc;
 
 	if (message.obj_value_.message_ == 0) {
@@ -754,6 +757,7 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 			LOG_DBG("if process server certificate");
 			return process_client_messages(sc);
 		}*/
+	LOG_DBG("fi process keys");
 	return IAuthPolicySet::IN_PROGRESS;
 
 }
@@ -796,7 +800,9 @@ int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 	return IAuthPolicySet::IN_PROGRESS;
 
 }
-int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc){
+int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
+{
+
 	LOG_DBG("enter to client key exchange");
 	//generar 48bytes rand, extreure pubkey, rsa_encrypt i enviar!
 	//de l'laltre banda rebre, rsa_decrypt i veure si els dos logs donen igual :)
