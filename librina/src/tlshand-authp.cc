@@ -796,7 +796,7 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 {
 
-	load_authentication_certificate(sc); //tornara a carregar el mateix :/
+	load_authentication_certificate(sc);
 	//convert x509
 	UcharArray encoded_cert;
 	encoded_cert.length = i2d_X509(sc->cert, &encoded_cert.data);
@@ -827,7 +827,7 @@ int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
-	//sc->state = TLSHandSecurityContext::WAIT_SERVER_HELLO_and_CERTIFICATE; //canviar a un de nou o no cal???
+	//sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA; //canviar a un de nou o no cal???
 	return IAuthPolicySet::IN_PROGRESS;
 
 }
@@ -838,7 +838,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	//generar 48bytes rand, extreure pubkey, rsa_encrypt i enviar!
 
 	UcharArray pre_master_secret(48);
-	EVP_PKEY *pkey = NULL;
+/*	EVP_PKEY *pkey = NULL;
 	RSA *rsa_pkey = NULL;
 
 	if(RAND_bytes(pre_master_secret.data, pre_master_secret.length) != 1)
@@ -859,7 +859,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 
 	//es necessari??? free pkey
 	//EVP_PKEY_free(pkey);
-
+*/
 
 	//Send client key exchange
 	try {
