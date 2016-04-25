@@ -859,6 +859,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	//es necessari??? free pkey
 	EVP_PKEY_free(pkey);
 
+
 	//Send client key exchange
 	try {
 		cdap_rib::flags_t flags;
@@ -887,8 +888,8 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	//sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA; //canviar a un de nou o no cal???
 	LOG_DBG("fi client key exchange");
 
-	return IAuthPolicySet::IN_PROGRESS;
-
+	//return IAuthPolicySet::IN_PROGRESS;
+	return 0;
 
 }
 
@@ -909,7 +910,6 @@ int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 	LOG_DBG("before calling send client_key exchange");
 	//Send second message corresponding to client_key_exchange
 	send_client_key_exchange(sc);
-
 	LOG_DBG("after calling send client_key exchange");
 
 	return IAuthPolicySet::IN_PROGRESS;
