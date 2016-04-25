@@ -657,10 +657,11 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 	decode_server_certificate_tls_hand(message.obj_value_,certificate_chain);
 
 	//transformar cert a x509 i guardar al context
-	/*const unsigned char **pointer ;
-	pointer = reinterpret_cast < const unsigned char** >( &certificate_chain.data);
-	sc->other_cert = d2i_X509(NULL, pointer, certificate_chain.length);
-*/
+	const unsigned char* pointer ;
+	pointer = reinterpret_cast<unsigned const char* >(&certificate_chain.data);
+
+	sc->other_cert = d2i_X509(NULL, &pointer, certificate_chain.length);
+
 	/*unsigned char** v2 = &certificate_chain.data;
 	unsigned char const** v3 = const_cast<unsigned char const**>(v2);
 	unsigned char const** v4 = reinterpret_cast<unsigned char const**>(v3);
@@ -757,7 +758,7 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 		timer.scheduleTask(sc->timer_task, timeout);*/
 
 
-	UcharArray pre_master_secret;
+	/*UcharArray pre_master_secret;
 	decode_client_key_exchange_tls_hand(message.obj_value_, pre_master_secret);
 
 	LOG_DBG("principi rsa public decrytion");
@@ -784,9 +785,9 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	}
 
 
-	EVP_PKEY_free(privkey); //necesrai?*/
+	EVP_PKEY_free(privkey); //necesrai?
 	LOG_DBG("pre_master_secret.length:" "%d", pre_master_secret.length);
-	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
+	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);*/
 	LOG_DBG("fi process keys");
 
 	return IAuthPolicySet::IN_PROGRESS;
