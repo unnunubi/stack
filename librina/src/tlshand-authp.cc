@@ -612,7 +612,7 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 	if(sc->cert_received) {
 		sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA;
 		LOG_DBG("if process server hello");
-		return process_client_messages(sc);
+		return send_client_messages(sc);
 
 	}
 	LOG_DBG("end process server hello");
@@ -672,7 +672,7 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 	if(sc->hello_received) {
 		sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA;
 		LOG_DBG("if process server certificate");
-		return process_client_messages(sc);
+		return send_client_messages(sc);
 	}
 	LOG_DBG("end process server certificate");
 	return IAuthPolicySet::IN_PROGRESS;
@@ -727,7 +727,7 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
-	LOG_DBG("ini process_client key exchange");
+	LOG_DBG("ini server decoding client keys");
 
 	TLSHandSecurityContext * sc;
 
@@ -759,21 +759,12 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	UcharArray pre_master_secret;
 	decode_client_key_exchange_tls_hand(message.obj_value_, pre_master_secret);
 
-	//decrypt pre master secret
-	//EVP_PKEY *pkey = NULL;
-	//RSA *rsa_pkey = NULL;
-	//int res = -1;
-	//char err[130] = "0";
-
 	LOG_DBG("principi rsa public decrytion");
 
-	//extreurepubkey
-	/*if ((pkey = X509_get_pubkey(sc->cert)) == NULL)	LOG_DBG("Error getting public key from certificate");
-	rsa_pkey = EVP_PKEY_get1_RSA(pkey);*/
-
-	//PROVA
 	EVP_PKEY *privkey = NULL;
 	FILE *fp;
+	int res = -1;
+	char err[130];
 	std::stringstream ss;
 	RSA *rsakey = NULL;
 	ss << sc->certificate_path.c_str() << "/" << TLSHandSecurityContext::MY_CERTIFICATE;
@@ -782,34 +773,20 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
 	fclose(fp);
 	rsakey = EVP_PKEY_get1_RSA(privkey);
-
 	if(rsakey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
 
-	/*if((res =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsakey, RSA_PKCS1_OAEP_PADDING)) == -1){
+	if((res =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsakey, RSA_PKCS1_OAEP_PADDING)) == -1){
 		LOG_ERR("Error decrypting pre-master secret");
 		ERR_load_crypto_strings();
 		ERR_error_string(ERR_get_error(), err);
 		LOG_ERR("Error decrypting message: %s\n", err);
 	}
 
-	if(rsa_pkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
 
-	if((res =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_PKCS1_OAEP_PADDING)) == -1){
-		LOG_ERR("Error decrypting pre-master secret");
-		ERR_load_crypto_strings();
-		ERR_error_string(ERR_get_error(), err);
-		LOG_ERR("Error encrypting message: %s\n", err);
-	}
-
-
-
-
-
-	EVP_PKEY_free(pkey); //necesrai?*/
+	EVP_PKEY_free(privkey); //necesrai?*/
 	LOG_DBG("pre_master_secret.length:" "%d", pre_master_secret.length);
 	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
 	LOG_DBG("fi process keys");
-
 
 	return IAuthPolicySet::IN_PROGRESS;
 
@@ -858,7 +835,6 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 
 	LOG_DBG("enter to client key exchange");
 	//generar 48bytes rand, extreure pubkey, rsa_encrypt i enviar!
-	//de l'laltre banda rebre, rsa_decrypt i veure si els dos logs donen igual :)
 
 	UcharArray pre_master_secret(48);
 	EVP_PKEY *pkey = NULL;
@@ -916,7 +892,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 
 }
 
-int AuthTLSHandPolicySet::process_client_messages(TLSHandSecurityContext * sc)
+int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 {
 	//canviar estat, a wait el que sigui i fer tres funcions que cfacin dels tres misatges corresponents
 	LOG_DBG("process_client_3messages FUNCTION");
@@ -930,8 +906,11 @@ int AuthTLSHandPolicySet::process_client_messages(TLSHandSecurityContext * sc)
 	//Send first message corresponding to the client_certificate
 	send_client_certificate(sc);
 
+	LOG_DBG("before calling send client_key exchange");
 	//Send second message corresponding to client_key_exchange
 	send_client_key_exchange(sc);
+
+	LOG_DBG("after calling send client_key exchange");
 
 	return IAuthPolicySet::IN_PROGRESS;
 }

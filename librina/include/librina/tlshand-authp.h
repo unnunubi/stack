@@ -167,7 +167,7 @@ private:
 							 int session_id);
 	int process_client_key_exchange_message(const cdap::CDAPMessage& message,
 								 int session_id);
-	int process_client_messages(TLSHandSecurityContext * sc);
+	int send_client_messages(TLSHandSecurityContext * sc);
 	int send_client_certificate(TLSHandSecurityContext * sc);
 	int send_client_key_exchange(TLSHandSecurityContext * sc);
 	//FI BERTA
