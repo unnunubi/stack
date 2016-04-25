@@ -665,7 +665,6 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 	unsigned char const** v3 = const_cast<unsigned char const**>(v2);
 	unsigned char const** v4 = reinterpret_cast<unsigned char const**>(v3);
 	sc->other_cert = d2i_X509(NULL, v4, certificate_chain.length);
-
 	if(sc->other_cert == NULL) LOG_ERR("Bad conversion to x509");
 
 
@@ -714,10 +713,11 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 	decode_client_certificate_tls_hand(message.obj_value_,certificate_chain);////canviar!!
 
 	//transformar cert rebut a x509 i guardar al context
-	/*const unsigned char *pointer ;
-	pointer = reinterpret_cast < const unsigned char* >( &certificate_chain.data);
-	sc->other_cert = d2i_X509(NULL, &pointer, certificate_chain.length);
-	if(!sc->other_cert) LOG_ERR("Bad conversion to x509");*/
+	unsigned char** v2 = &certificate_chain.data;
+	unsigned char const** v3 = const_cast<unsigned char const**>(v2);
+	unsigned char const** v4 = reinterpret_cast<unsigned char const**>(v3);
+	sc->other_cert = d2i_X509(NULL, v4, certificate_chain.length);
+	if(sc->other_cert == NULL) LOG_ERR("Bad conversion to x509");
 
 
 	LOG_DBG("end process client certificate");
@@ -755,14 +755,15 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	/*sc->timer_task = new CancelAuthTimerTask(sec_man, session_id);
 		timer.scheduleTask(sc->timer_task, timeout);*/
 
-	UcharArray pre_master_secret(48);
+
+	UcharArray pre_master_secret;
 	decode_client_key_exchange_tls_hand(message.obj_value_, pre_master_secret);
 
 	//decrypt pre master secret
-	EVP_PKEY *pkey = NULL;
+	//EVP_PKEY *pkey = NULL;
 	//RSA *rsa_pkey = NULL;
-	int res = -1;
-	char err[130] = "0";
+	//int res = -1;
+	//char err[130] = "0";
 
 	LOG_DBG("principi rsa public decrytion");
 
@@ -784,14 +785,14 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 	if(rsakey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
 
-	if((res =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsakey, RSA_PKCS1_OAEP_PADDING)) == -1){
+	/*if((res =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsakey, RSA_PKCS1_OAEP_PADDING)) == -1){
 		LOG_ERR("Error decrypting pre-master secret");
 		ERR_load_crypto_strings();
 		ERR_error_string(ERR_get_error(), err);
-		LOG_ERR("Error encrypting message: %s\n", err);
+		LOG_ERR("Error decrypting message: %s\n", err);
 	}
 
-	/*if(rsa_pkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
+	if(rsa_pkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
 
 	if((res =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_PKCS1_OAEP_PADDING)) == -1){
 		LOG_ERR("Error decrypting pre-master secret");
@@ -799,12 +800,12 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 		ERR_error_string(ERR_get_error(), err);
 		LOG_ERR("Error encrypting message: %s\n", err);
 	}
-*/
 
 
 
 
-	EVP_PKEY_free(pkey); //necesrai?
+
+	EVP_PKEY_free(pkey); //necesrai?*/
 	LOG_DBG("pre_master_secret.length:" "%d", pre_master_secret.length);
 	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
 	LOG_DBG("fi process keys");
@@ -860,7 +861,6 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	//de l'laltre banda rebre, rsa_decrypt i veure si els dos logs donen igual :)
 
 	UcharArray pre_master_secret(48);
-
 	EVP_PKEY *pkey = NULL;
 	RSA *rsa_pkey = NULL;
 
@@ -873,8 +873,6 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	//extreurepubkey
 	if ((pkey = X509_get_pubkey(sc->other_cert)) == NULL)
 		LOG_DBG("Error getting public key from certificate");
-
-
 	rsa_pkey = EVP_PKEY_get1_RSA(pkey);
 	if(rsa_pkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
 
@@ -882,10 +880,8 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	if((res = RSA_public_encrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_PKCS1_OAEP_PADDING)) == -1)
 		LOG_ERR("Error encrypting pre-master secret");
 
-
 	//es necessari??? free pkey
 	EVP_PKEY_free(pkey);
-
 
 	//Send client key exchange
 	try {
