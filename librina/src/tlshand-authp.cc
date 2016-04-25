@@ -30,6 +30,8 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/x509_vfy.h>
+#include <stdio.h>
+#include <string.h>
 
 
 
@@ -741,17 +743,38 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 	//decrypt pre master secret
 	EVP_PKEY *pkey = NULL;
-	RSA *rsa_pkey = NULL;
+	//RSA *rsa_pkey = NULL;
 	int res = -1;
 	char err[130] = "0";
 
 	LOG_DBG("principi rsa public decrytion");
 
 	//extreurepubkey
-	if ((pkey = X509_get_pubkey(sc->cert)) == NULL)	LOG_DBG("Error getting public key from certificate");
-	rsa_pkey = EVP_PKEY_get1_RSA(pkey);
+	/*if ((pkey = X509_get_pubkey(sc->cert)) == NULL)	LOG_DBG("Error getting public key from certificate");
+	rsa_pkey = EVP_PKEY_get1_RSA(pkey);*/
 
-	if(rsa_pkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
+	//PROVA
+	EVP_PKEY *privkey = NULL;
+	FILE *fp;
+	std::stringstream ss;
+	RSA *rsakey = NULL;
+	ss << sc->certificate_path.c_str() << "/" << TLSHandSecurityContext::MY_CERTIFICATE;
+	fp = fopen (ss.str().c_str(), "r");
+
+	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
+	fclose(fp);
+	rsakey = EVP_PKEY_get1_RSA(privkey);
+
+	if(rsakey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
+
+	if((res =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsakey, RSA_PKCS1_OAEP_PADDING)) == -1){
+		LOG_ERR("Error decrypting pre-master secret");
+		ERR_load_crypto_strings();
+		ERR_error_string(ERR_get_error(), err);
+		LOG_ERR("Error encrypting message: %s\n", err);
+	}
+
+	/*if(rsa_pkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
 
 	if((res =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_PKCS1_OAEP_PADDING)) == -1){
 		LOG_ERR("Error decrypting pre-master secret");
@@ -759,14 +782,17 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 		ERR_error_string(ERR_get_error(), err);
 		LOG_ERR("Error encrypting message: %s\n", err);
 	}
+*/
+
+
+
 
 	EVP_PKEY_free(pkey); //necesrai?
-
-
 	LOG_DBG("pre_master_secret.length:" "%d", pre_master_secret.length);
 	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
-
 	LOG_DBG("fi process keys");
+
+
 	return IAuthPolicySet::IN_PROGRESS;
 
 }
