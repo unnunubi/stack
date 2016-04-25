@@ -721,6 +721,7 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 
 
 	LOG_DBG("end process client certificate");
+
 	return IAuthPolicySet::IN_PROGRESS;
 
 }
@@ -857,7 +858,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 		LOG_ERR("Error encrypting pre-master secret");
 
 	//es necessari??? free pkey
-	EVP_PKEY_free(pkey);
+	//EVP_PKEY_free(pkey);
 
 
 	//Send client key exchange
@@ -879,8 +880,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 				filt,
 				NULL);
 	} catch (Exception &e) {
-		LOG_ERR("Problems encoding and sending CDAP message: %s",
-				e.what());
+		LOG_ERR("Problems encoding and sending CDAP message: %s",e.what());
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
