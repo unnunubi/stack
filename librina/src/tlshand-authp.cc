@@ -657,10 +657,16 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 	decode_server_certificate_tls_hand(message.obj_value_,certificate_chain);
 
 	//transformar cert a x509 i guardar al context
-	const unsigned char *pointer ;
-	pointer = reinterpret_cast < const unsigned char* >( &certificate_chain.data);
-	sc->other_cert = d2i_X509(NULL, &pointer, certificate_chain.length);
-	if(!sc->other_cert) LOG_ERR("Bad conversion to x509");
+	/*const unsigned char **pointer ;
+	pointer = reinterpret_cast < const unsigned char** >( &certificate_chain.data);
+	sc->other_cert = d2i_X509(NULL, pointer, certificate_chain.length);
+*/
+	unsigned char** v2 = &certificate_chain.data;
+	unsigned char const** v3 = const_cast<unsigned char const**>(v2);
+	unsigned char const** v4 = reinterpret_cast<unsigned char const**>(v3);
+	sc->other_cert = d2i_X509(NULL, v4, certificate_chain.length);
+
+	if(sc->other_cert == NULL) LOG_ERR("Bad conversion to x509");
 
 
 	//if ha rebut server certificate-< canvi estat , enviar misatges client
@@ -708,10 +714,10 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 	decode_client_certificate_tls_hand(message.obj_value_,certificate_chain);////canviar!!
 
 	//transformar cert rebut a x509 i guardar al context
-	const unsigned char *pointer ;
+	/*const unsigned char *pointer ;
 	pointer = reinterpret_cast < const unsigned char* >( &certificate_chain.data);
 	sc->other_cert = d2i_X509(NULL, &pointer, certificate_chain.length);
-	if(!sc->other_cert) LOG_ERR("Bad conversion to x509");
+	if(!sc->other_cert) LOG_ERR("Bad conversion to x509");*/
 
 
 	LOG_DBG("end process client certificate");
