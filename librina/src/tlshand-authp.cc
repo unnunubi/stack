@@ -888,9 +888,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	//sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA; //canviar a un de nou o no cal???
 	LOG_DBG("fi client key exchange");
 
-	//return IAuthPolicySet::IN_PROGRESS;
-	return 0;
-
+	return IAuthPolicySet::IN_PROGRESS;
 }
 
 int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
