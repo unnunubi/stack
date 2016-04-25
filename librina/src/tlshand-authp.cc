@@ -882,7 +882,7 @@ int AuthTLSHandPolicySet::process_client_messages(TLSHandSecurityContext * sc)
 	//canviar estat, a wait el que sigui i fer tres funcions que cfacin dels tres misatges corresponents
 	LOG_DBG("process_client_3messages FUNCTION");
 
-	if (sc->state != TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS) {
+	if (sc->state != TLSHandSecurityContext::CLIENT_SENDING_DATA) {
 		LOG_ERR("Wrong state of policy");
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
