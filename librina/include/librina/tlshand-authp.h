@@ -83,6 +83,7 @@ public:
         	BEGIN,
                 WAIT_SERVER_HELLO_and_CERTIFICATE,
 		WAIT_CLIENT_CERTIFICATE_and_KEYS,
+		CLIENT_SENDING_DATA,
 		//WAIT_SERVER_CERTIFICATE,
                 DONE
         };

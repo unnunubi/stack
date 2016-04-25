@@ -609,7 +609,7 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 
 	//if ha rebut server certificate-< canvi estat , enviar misatges client
 	if(sc->cert_received) {
-		sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
+		sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA;
 		LOG_DBG("if process server hello");
 		return process_client_messages(sc);
 
@@ -657,7 +657,7 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 
 	//if ha rebut server certificate-< canvi estat , enviar misatges client
 	if(sc->hello_received) {
-		sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS; //aixo no esta be?
+		sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA; //aixo no esta be?
 		LOG_DBG("if process server certificate");
 		return process_client_messages(sc);
 	}
@@ -753,7 +753,7 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 	if(rsa_pkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
 
-	if((res =  RSA_public_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_PKCS1_OAEP_PADDING)) == -1){
+	if((res =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pkey, RSA_PKCS1_OAEP_PADDING)) == -1){
 		LOG_ERR("Error decrypting pre-master secret");
 		ERR_load_crypto_strings();
 		ERR_error_string(ERR_get_error(), err);
