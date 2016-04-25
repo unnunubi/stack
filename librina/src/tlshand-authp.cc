@@ -169,7 +169,6 @@ void decode_server_certificate_tls_hand(const ser_obj_t &message,
 
 	gpb_scertificate.ParseFromArray(message.message_, message.size_);
 
-	//certificate_chain = gpb_scertificate.certificate_chain().data();
 	if (gpb_scertificate.has_certificate_chain()) {
 		certificate_chain.data =  new unsigned char[gpb_scertificate.certificate_chain().size()];
 		memcpy(certificate_chain.data,
@@ -657,9 +656,16 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 	UcharArray certificate_chain;
 	decode_server_certificate_tls_hand(message.obj_value_,certificate_chain);
 
+	//transformar cert a x509 i guardar al context
+	const unsigned char *pointer ;
+	pointer = reinterpret_cast < const unsigned char* >( &certificate_chain.data);
+	sc->other_cert = d2i_X509(NULL, &pointer, certificate_chain.length);
+	if(!sc->other_cert) LOG_ERR("Bad conversion to x509");
+
+
 	//if ha rebut server certificate-< canvi estat , enviar misatges client
 	if(sc->hello_received) {
-		sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA; //aixo no esta be?
+		sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA;
 		LOG_DBG("if process server certificate");
 		return process_client_messages(sc);
 	}
@@ -699,8 +705,13 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 		timer.scheduleTask(sc->timer_task, timeout);*/
 
 	UcharArray certificate_chain;
-	decode_client_certificate_tls_hand(message.obj_value_,
-			certificate_chain);			////canviar!!
+	decode_client_certificate_tls_hand(message.obj_value_,certificate_chain);////canviar!!
+
+	//transformar cert rebut a x509 i guardar al context
+	const unsigned char *pointer ;
+	pointer = reinterpret_cast < const unsigned char* >( &certificate_chain.data);
+	sc->other_cert = d2i_X509(NULL, &pointer, certificate_chain.length);
+	if(!sc->other_cert) LOG_ERR("Bad conversion to x509");
 
 
 	LOG_DBG("end process client certificate");
@@ -854,7 +865,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
 
 	//extreurepubkey
-	if ((pkey = X509_get_pubkey(sc->cert)) == NULL)
+	if ((pkey = X509_get_pubkey(sc->other_cert)) == NULL)
 		LOG_DBG("Error getting public key from certificate");
 
 
@@ -895,7 +906,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 		return IAuthPolicySet::FAILED;
 	}
 
-	//sc->state = TLSHandSecurityContext::WAIT_SERVER_HELLO_and_CERTIFICATE; //canviar a un de nou o no cal???
+	//sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA; //canviar a un de nou o no cal???
 	LOG_DBG("fi client key exchange");
 
 	return IAuthPolicySet::IN_PROGRESS;
