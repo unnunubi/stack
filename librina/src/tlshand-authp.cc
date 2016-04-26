@@ -868,7 +868,9 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 		LOG_ERR("Error encrypting pre-master secret");
 
 	//es necessari??? free pkey
-	EVP_PKEY_free(pubkey);
+	//EVP_PKEY_free(pubkey);
+
+	LOG_DBG("end public client encrypt");
 
 
 	//Send client key exchange
