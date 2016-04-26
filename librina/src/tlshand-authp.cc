@@ -860,9 +860,10 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	//generar 48bytes rand, extreure pubkey, rsa_encrypt i enviar!
 
 	UcharArray pre_master_secret(48);
+	UcharArray enc_pre_master_secret(48);
 	EVP_PKEY *pubkey = NULL;
 	RSA *rsa_pubkey = NULL;
-	//int res = -1;
+	int res = -1;
 
 	if(RAND_bytes(pre_master_secret.data, pre_master_secret.length) != 1)
 		LOG_ERR("Problems generating random bytes");
@@ -878,15 +879,16 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	if(rsa_pubkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
 
 
-/*	if((res = RSA_public_encrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pubkey, RSA_PKCS1_OAEP_PADDING)) == -1){
+	if((res = RSA_public_encrypt(pre_master_secret.length, pre_master_secret.data, enc_pre_master_secret.data, rsa_pubkey, RSA_PKCS1_OAEP_PADDING)) == -1){
 		LOG_ERR("Error encrypting pre-master secret");
 		LOG_ERR("Error encrypting challenge with RSA public key: %s", ERR_error_string(ERR_get_error(), NULL));
 		return -1;
 	}
 
 	//es necessari??? free pkey
-	//EVP_PKEY_free(pubkey);
-*/
+	EVP_PKEY_free(pubkey);
+	RSA_free(rsa_pubkey);
+
 	LOG_DBG("end public client encrypt");
 
 
@@ -900,7 +902,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 		obj_info.class_ = CLIENT_KEY_EXCHANGE;
 		obj_info.name_ = CLIENT_KEY_EXCHANGE;
 		obj_info.inst_ = 0;
-		encode_client_key_exchange_tls_hand(pre_master_secret,
+		encode_client_key_exchange_tls_hand(enc_pre_master_secret,
 				obj_info.value_);
 
 		rib_daemon->remote_write(sc->con,
