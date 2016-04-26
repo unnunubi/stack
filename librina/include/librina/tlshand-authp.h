@@ -121,7 +121,7 @@ public:
 	// Owned by a timer
 	CancelAuthTimerTask * timer_task;
 	X509 * cert;
-	X509 * other_cert;
+	X509 *other_cert;
 
 private:
 	//return -1 if options are valid, 0 otherwise
