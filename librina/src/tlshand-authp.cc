@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <openssl/rsa.h>
+#include <openssl/pem.h>
 
 
 
@@ -765,36 +766,47 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 		timer.scheduleTask(sc->timer_task, timeout);*/
 
 
-	/*UcharArray pre_master_secret;
+	UcharArray pre_master_secret;
 	decode_client_key_exchange_tls_hand(message.obj_value_, pre_master_secret);
 
-	LOG_DBG("principi rsa public decrytion");
-
 	EVP_PKEY *privkey = NULL;
+	RSA *rsakey;
 	FILE *fp;
 	int res = -1;
 	char err[130];
-	std::stringstream ss;
-	RSA *rsakey = NULL;
-	ss << sc->certificate_path.c_str() << "/" << TLSHandSecurityContext::MY_CERTIFICATE;
-	fp = fopen (ss.str().c_str(), "r");
 
-	PEM_read_PrivateKey(fp, &privkey, NULL, NULL);
+	//es pot fer millor? :/
+	std::stringstream ss;
+	ss << sc->certificate_path.c_str() << "/" << TLSHandSecurityContext::MY_CERTIFICATE;
+	LOG_DBG("principi rsa public decrytion");
+
+	fp = fopen (ss.str().c_str(), "r");
+	LOG_DBG("hola berta");
+	if(fp == NULL) LOG_ERR("Could not open file");
+	privkey  = PEM_read_PrivateKey(fp, NULL, NULL, NULL);
 	fclose(fp);
+	if(privkey == NULL) LOG_ERR("Failed to extract privkey.");
+
+	PEM_read_PrivateKey( fp, &privkey, NULL, NULL);
+	LOG_DBG("hola berta read");
+
+
 	rsakey = EVP_PKEY_get1_RSA(privkey);
 	if(rsakey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
+	LOG_DBG("hola berta rsa");
 
-	if((res =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsakey, RSA_PKCS1_OAEP_PADDING)) == -1){
+	if((res =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsakey, RSA_NO_PADDING)) == -1){
 		LOG_ERR("Error decrypting pre-master secret");
 		ERR_load_crypto_strings();
 		ERR_error_string(ERR_get_error(), err);
 		LOG_ERR("Error decrypting message: %s\n", err);
 	}
+	LOG_DBG("hola berta fi private");
 
 
 	EVP_PKEY_free(privkey); //necesrai?
 	LOG_DBG("pre_master_secret.length:" "%d", pre_master_secret.length);
-	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);*/
+	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
 	LOG_DBG("fi process keys");
 
 	return IAuthPolicySet::IN_PROGRESS;
@@ -864,7 +876,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	if(rsa_pubkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
 
 
-	if((res = RSA_public_encrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pubkey, RSA_PKCS1_OAEP_PADDING)) == -1)
+	if((res = RSA_public_encrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pubkey, RSA_NO_PADDING)) == -1)
 		LOG_ERR("Error encrypting pre-master secret");
 
 	//es necessari??? free pkey
