@@ -766,7 +766,7 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 		timer.scheduleTask(sc->timer_task, timeout);*/
 
 
-	UcharArray pre_master_secret;
+/*	UcharArray pre_master_secret;
 	decode_client_key_exchange_tls_hand(message.obj_value_, pre_master_secret);
 
 	EVP_PKEY *privkey = NULL;
@@ -775,41 +775,26 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	char err[130];
 
 	BIO * key;
-	key =  BIO_new_file(sc->certificate_path.c_str(), "r");
+	std::stringstream ss;
+	ss << sc->certificate_path.c_str() << "/" << TLSHandSecurityContext::MY_CERTIFICATE;
+
+	key =  BIO_new_file(ss.str().c_str(), "r");
 	if (!key) {
-		LOG_ERR("Problems opening keystore file at: %s",sc->certificate_path.c_str());
+		LOG_ERR("Problems opening key file at: %s",sc->certificate_path.c_str());
 		return -1;
 	}
 
-	//TODO fix problems with reading private keys from encrypted repos
-	//we should use sc->keystore_pass.c_str() as the last argument
-	rsakey= PEM_read_bio_RSAPrivateKey(key, NULL, 0, NULL);
+	privkey = PEM_read_bio_PrivateKey(key, NULL, 0, NULL);
 	BIO_free(key);
 
-	if (!rsakey) {
-		LOG_ERR("Problems reading RSA key",ERR_error_string(ERR_get_error(), NULL));
+	if (!privkey) {
+		LOG_ERR("Problems reading  key",ERR_error_string(ERR_get_error(), NULL));
 		return -1;
 	}
-	//es pot fer millor? :/
-
-	/*std::stringstream ss;
-	FILE *fp;
-	ss << sc->certificate_path.c_str() << "/" << TLSHandSecurityContext::MY_CERTIFICATE;
-	LOG_DBG("principi rsa public decrytion");
-
-	fp = fopen (ss.str().c_str(), "r");
-	LOG_DBG("hola berta");
-	if(fp == NULL) LOG_ERR("Could not open file");
-	privkey  = PEM_read_PrivateKey(fp, NULL, NULL, NULL);
-	fclose(fp);
-	if(privkey == NULL) LOG_ERR("Failed to extract privkey.");
-
-	PEM_read_PrivateKey( fp, &privkey, NULL, NULL);
-	LOG_DBG("hola berta read");
-
 
 	rsakey = EVP_PKEY_get1_RSA(privkey);
-	if(rsakey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");*/
+	if(rsakey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
+
 	LOG_DBG("hola berta rsa");
 
 	if((res =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsakey, RSA_PKCS1_OAEP_PADDING)) == -1){
@@ -824,7 +809,7 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	EVP_PKEY_free(privkey); //necesrai?
 	LOG_DBG("pre_master_secret.length:" "%d", pre_master_secret.length);
 	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
-	LOG_DBG("fi process keys");
+	LOG_DBG("fi process keys");*/
 
 	return IAuthPolicySet::IN_PROGRESS;
 
@@ -877,7 +862,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	UcharArray pre_master_secret(48);
 	EVP_PKEY *pubkey = NULL;
 	RSA *rsa_pubkey = NULL;
-	int res = -1;
+	//int res = -1;
 
 	if(RAND_bytes(pre_master_secret.data, pre_master_secret.length) != 1)
 		LOG_ERR("Problems generating random bytes");
@@ -893,7 +878,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	if(rsa_pubkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
 
 
-	if((res = RSA_public_encrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pubkey, RSA_PKCS1_OAEP_PADDING)) == -1){
+/*	if((res = RSA_public_encrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pubkey, RSA_PKCS1_OAEP_PADDING)) == -1){
 		LOG_ERR("Error encrypting pre-master secret");
 		LOG_ERR("Error encrypting challenge with RSA public key: %s", ERR_error_string(ERR_get_error(), NULL));
 		return -1;
@@ -901,7 +886,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 
 	//es necessari??? free pkey
 	//EVP_PKEY_free(pubkey);
-
+*/
 	LOG_DBG("end public client encrypt");
 
 
