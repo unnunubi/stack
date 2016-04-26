@@ -771,12 +771,29 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 	EVP_PKEY *privkey = NULL;
 	RSA *rsakey;
-	FILE *fp;
 	int res = -1;
 	char err[130];
 
+	BIO * key;
+	key =  BIO_new_file(sc->certificate_path.c_str(), "r");
+	if (!key) {
+		LOG_ERR("Problems opening keystore file at: %s",sc->certificate_path.c_str());
+		return -1;
+	}
+
+	//TODO fix problems with reading private keys from encrypted repos
+	//we should use sc->keystore_pass.c_str() as the last argument
+	rsakey= PEM_read_bio_RSAPrivateKey(key, NULL, 0, NULL);
+	BIO_free(key);
+
+	if (!rsakey) {
+		LOG_ERR("Problems reading RSA key",ERR_error_string(ERR_get_error(), NULL));
+		return -1;
+	}
 	//es pot fer millor? :/
-	std::stringstream ss;
+
+	/*std::stringstream ss;
+	FILE *fp;
 	ss << sc->certificate_path.c_str() << "/" << TLSHandSecurityContext::MY_CERTIFICATE;
 	LOG_DBG("principi rsa public decrytion");
 
@@ -792,10 +809,10 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 
 	rsakey = EVP_PKEY_get1_RSA(privkey);
-	if(rsakey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
+	if(rsakey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");*/
 	LOG_DBG("hola berta rsa");
 
-	if((res =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsakey, RSA_NO_PADDING)) == -1){
+	if((res =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsakey, RSA_PKCS1_OAEP_PADDING)) == -1){
 		LOG_ERR("Error decrypting pre-master secret");
 		ERR_load_crypto_strings();
 		ERR_error_string(ERR_get_error(), err);
@@ -876,8 +893,11 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	if(rsa_pubkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
 
 
-	if((res = RSA_public_encrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pubkey, RSA_NO_PADDING)) == -1)
+	if((res = RSA_public_encrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsa_pubkey, RSA_PKCS1_OAEP_PADDING)) == -1){
 		LOG_ERR("Error encrypting pre-master secret");
+		LOG_ERR("Error encrypting challenge with RSA public key: %s", ERR_error_string(ERR_get_error(), NULL));
+		return -1;
+	}
 
 	//es necessari??? free pkey
 	//EVP_PKEY_free(pubkey);
