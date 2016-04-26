@@ -886,8 +886,8 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	}
 
 	//es necessari??? free pkey
-	EVP_PKEY_free(pubkey);
-	RSA_free(rsa_pubkey);
+	/*EVP_PKEY_free(pubkey);
+	RSA_free(rsa_pubkey);*/
 
 	LOG_DBG("end public client encrypt");
 
