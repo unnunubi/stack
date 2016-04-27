@@ -812,7 +812,9 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 	//EVP_PKEY_free(privkey); //necesrai?
 	LOG_DBG("pre_master_secret.length:" "%d", dec_pre_master_secret.length);
+	LOG_DBG("pre_master_secret.data:");
 	LOG_DBG("decrypted pre_master_secret.data:" "%d", dec_pre_master_secret.data);
+	LOG_DBG("decrypted pre_master_secret.data:" "%s", dec_pre_master_secret.data);
 	LOG_DBG("fi process keys");
 
 	return IAuthPolicySet::IN_PROGRESS;
@@ -874,7 +876,9 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 		LOG_ERR("Problems generating random bytes");
 
 	//printar el random
+	LOG_DBG("pre_master_secret.data:");
 	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
+	LOG_DBG("pre_master_secret.data:" "%s \n", pre_master_secret.data);
 
 	if(sc->other_cert == NULL)LOG_ERR("other cert mal guardat"); //aquesta comprovacio no cal, nomes es prova
 
