@@ -810,7 +810,7 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	LOG_DBG("fi private decrypt");
 
 
-	EVP_PKEY_free(privkey); //necesrai?
+	//EVP_PKEY_free(privkey); //necesrai?
 	LOG_DBG("pre_master_secret.length:" "%d", dec_pre_master_secret.length);
 	LOG_DBG("decrypted pre_master_secret.data:" "%d", dec_pre_master_secret.data);
 	LOG_DBG("fi process keys");
@@ -910,8 +910,8 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	LOG_DBG("enc_pre_master_secret.data:" "%d", enc_pre_master_secret.data);
 
 	//es necessari??? free pkey
-	EVP_PKEY_free(pubkey);
-	RSA_free(rsa_pubkey);
+	/*EVP_PKEY_free(pubkey);
+	RSA_free(rsa_pubkey);*/
 
 	LOG_DBG("end public client encrypt");
 
