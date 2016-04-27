@@ -768,19 +768,16 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 		timer.scheduleTask(sc->timer_task, timeout);*/
 
 
-	UcharArray pre_master_secret;
-	decode_client_key_exchange_tls_hand(message.obj_value_, pre_master_secret);
+	UcharArray enc_pre_master_secret;
+	decode_client_key_exchange_tls_hand(message.obj_value_, enc_pre_master_secret);
 
 	EVP_PKEY *privkey = NULL;
 	RSA *rsakey;
-
-	BIO * key;
-	std::stringstream ss;
-	ss << sc->certificate_path.c_str() << "/" << TLSHandSecurityContext::MY_CERTIFICATE;
+	BIO *key;
 
 	key =  BIO_new_file(sc->priv_key_path.c_str(), "r");
 	if (!key) {
-		LOG_ERR("Problems opening key file at: %s",sc->certificate_path.c_str());
+		LOG_ERR("Problems opening key file at: %s",sc->priv_key_path.c_str());
 		return -1;
 	}
 
@@ -793,21 +790,29 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	}
 
 	rsakey = EVP_PKEY_get1_RSA(privkey);
-	if(rsakey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
+	if(rsakey == NULL)
+		LOG_ERR("EVP_PKEY_get1_RSA: failed.");
 
 	LOG_DBG("hola berta rsa");
 
-	if((pre_master_secret.length =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsakey, RSA_PKCS1_OAEP_PADDING)) == -1){
+	UcharArray dec_pre_master_secret;
+	dec_pre_master_secret.data = new unsigned char[48];
+
+	if((dec_pre_master_secret.length =  RSA_private_decrypt(enc_pre_master_secret.length,
+								enc_pre_master_secret.data,
+								dec_pre_master_secret.data,
+								rsakey,
+								RSA_PKCS1_OAEP_PADDING)) == -1){
 		LOG_ERR("Error decrypting pre-master secret");
 		ERR_load_crypto_strings();
 		ERR_error_string(ERR_get_error(), NULL);
 	}
-	LOG_DBG("hola berta fi private");
+	LOG_DBG("hola berta fi private decrypt");
 
 
 	//EVP_PKEY_free(privkey); //necesrai?
-	LOG_DBG("pre_master_secret.length:" "%d", pre_master_secret.length);
-	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
+	LOG_DBG("pre_master_secret.length:" "%d", dec_pre_master_secret.length);
+	LOG_DBG("pre_master_secret.data:" "%d", dec_pre_master_secret.data);
 	LOG_DBG("fi process keys");
 
 	return IAuthPolicySet::IN_PROGRESS;
