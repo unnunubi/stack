@@ -793,10 +793,10 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	if(rsakey == NULL)
 		LOG_ERR("EVP_PKEY_get1_RSA: failed.");
 
-	LOG_DBG("hola berta rsa");
-
 	UcharArray dec_pre_master_secret;
-	dec_pre_master_secret.data = new unsigned char[48];
+	dec_pre_master_secret.data = new unsigned char[256];
+
+	LOG_DBG("encrypted pre_master_secret.data:" "%d", enc_pre_master_secret.data);
 
 	if((dec_pre_master_secret.length =  RSA_private_decrypt(enc_pre_master_secret.length,
 								enc_pre_master_secret.data,
@@ -807,12 +807,12 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 		ERR_load_crypto_strings();
 		ERR_error_string(ERR_get_error(), NULL);
 	}
-	LOG_DBG("hola berta fi private decrypt");
+	LOG_DBG("fi private decrypt");
 
 
 	//EVP_PKEY_free(privkey); //necesrai?
 	LOG_DBG("pre_master_secret.length:" "%d", dec_pre_master_secret.length);
-	LOG_DBG("pre_master_secret.data:" "%d", dec_pre_master_secret.data);
+	LOG_DBG("decrypted pre_master_secret.data:" "%d", dec_pre_master_secret.data);
 	LOG_DBG("fi process keys");
 
 	return IAuthPolicySet::IN_PROGRESS;
