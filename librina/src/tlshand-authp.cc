@@ -666,11 +666,11 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 	const unsigned char** pointer;
 	pointer = &aux;
 
-	//pointer = const_cast<unsigned char *>(reinterpret_cast<const unsigned char * >(&certificate_chain.data));
-	//pointer = ((const unsigned char*) &certificate_chain.data);
-	if(pointer ==NULL) LOG_ERR("Bad pointer :(");
+	if(pointer ==NULL)
+		LOG_ERR("Bad pointer :(");
 	sc->other_cert = d2i_X509(NULL, pointer, certificate_chain.length);
-	if(sc->other_cert  == NULL) LOG_ERR("Bad conversion to x509 :(");
+	if(sc->other_cert  == NULL)
+		LOG_ERR("Bad conversion to x509 :(");
 
 	//if ha rebut server certificate-< canvi estat , enviar misatges client
 	if(sc->hello_received) {
@@ -722,11 +722,11 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 	const unsigned char** pointer;
 	pointer = &aux;
 
-	//pointer = const_cast<unsigned char *>(reinterpret_cast<const unsigned char * >(&certificate_chain.data));
-	//pointer = ((const unsigned char*) &certificate_chain.data);
-	if(pointer ==NULL) LOG_ERR("Bad pointer :(");
+	if(pointer ==NULL)
+		LOG_ERR("Bad pointer :(");
 	sc->other_cert = d2i_X509(NULL, pointer, certificate_chain.length);
-	if(sc->other_cert  == NULL) LOG_ERR("Bad conversion to x509 :(");
+	if(sc->other_cert  == NULL)
+		LOG_ERR("Bad conversion to x509 :(");
 
 
 	LOG_DBG("end process client certificate");
@@ -859,11 +859,15 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	LOG_DBG("enter to client key exchange");
 	//generar 48bytes rand, extreure pubkey, rsa_encrypt i enviar!
 
-	UcharArray pre_master_secret(48);
-	UcharArray enc_pre_master_secret(48);
+	UcharArray pre_master_secret, enc_pre_master_secret;
+	pre_master_secret.data = new unsigned char[48];
+	pre_master_secret.length = 48;
+
+	enc_pre_master_secret.data = new unsigned char[48];
+	enc_pre_master_secret.length = 48;
+
 	EVP_PKEY *pubkey = NULL;
 	RSA *rsa_pubkey = NULL;
-	int res = -1;
 
 	if(RAND_bytes(pre_master_secret.data, pre_master_secret.length) != 1)
 		LOG_ERR("Problems generating random bytes");
@@ -871,26 +875,43 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	//printar el random
 	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
 
+	if(sc->other_cert == NULL)LOG_ERR("other cert mal guardat"); //aquesta comprovacio no cal, nomes es prova
+
 	//extreurepubkey
 	if ((pubkey = X509_get_pubkey(sc->other_cert)) == NULL)
-		LOG_DBG("Error getting public key from certificate");
+		LOG_ERR("Error getting public key from certificate %s",
+				ERR_error_string(ERR_get_error(), NULL));
 
 	rsa_pubkey = EVP_PKEY_get1_RSA(pubkey);
-	if(rsa_pubkey == NULL) LOG_ERR("EVP_PKEY_get1_RSA: failed.");
+
+	if(rsa_pubkey == NULL)
+		LOG_ERR("EVP_PKEY_get1_RSA: failed. %s",
+				ERR_error_string(ERR_get_error(), NULL));
+
+	LOG_DBG("before encryting enc_pre_master length %d" , enc_pre_master_secret.length);
+	LOG_DBG("%d bits Key\n", EVP_PKEY_bits(pubkey));
+	LOG_DBG("%d bytes RSA Key\n", RSA_size(rsa_pubkey));
 
 
-	if((res = RSA_public_encrypt(pre_master_secret.length, pre_master_secret.data, enc_pre_master_secret.data, rsa_pubkey, RSA_PKCS1_OAEP_PADDING)) == -1){
+
+	if((enc_pre_master_secret.length = RSA_public_encrypt(pre_master_secret.length,
+								pre_master_secret.data,
+								enc_pre_master_secret.data,
+								rsa_pubkey,
+								RSA_NO_PADDING)) == -1){
 		LOG_ERR("Error encrypting pre-master secret");
 		LOG_ERR("Error encrypting challenge with RSA public key: %s", ERR_error_string(ERR_get_error(), NULL));
-		return -1;
+		//return -1;
 	}
+
+	LOG_DBG("After encryting en_pre_master length %d" , enc_pre_master_secret.length);
+	LOG_DBG("enc_pre_master_secret.data:" "%d", enc_pre_master_secret.data);
 
 	//es necessari??? free pkey
 	/*EVP_PKEY_free(pubkey);
 	RSA_free(rsa_pubkey);*/
 
 	LOG_DBG("end public client encrypt");
-
 
 	//Send client key exchange
 	try {
@@ -918,7 +939,6 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 
 	//sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA; //canviar a un de nou o no cal???
 	LOG_DBG("fi client key exchange");
-
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
