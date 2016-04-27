@@ -78,6 +78,8 @@ public:
 	static const std::string CERTIFICATE_PATH;
 	static const std::string MY_CERTIFICATE;
 
+	static const std::string PRIV_KEY_PATH;
+
 
         enum State {
         	BEGIN,
@@ -103,6 +105,7 @@ public:
 
 	//Authentication Certificates
 	std::string certificate_path;
+	std::string priv_key_path;
 
 
 

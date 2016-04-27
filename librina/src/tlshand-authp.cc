@@ -252,7 +252,7 @@ const std::string TLSHandSecurityContext::KEYSTORE_PASSWORD = "keystorePass";
 //Berta
 const std::string TLSHandSecurityContext::CERTIFICATE_PATH = "myCredentials";
 const std::string TLSHandSecurityContext::MY_CERTIFICATE = "certificate.pem";
-
+const std::string TLSHandSecurityContext::PRIV_KEY_PATH = "myPrivKey";
 
 TLSHandSecurityContext::~TLSHandSecurityContext()
 {
@@ -292,6 +292,7 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 
 	//BERTA
 	certificate_path = profile.authPolicy.get_param_value_as_string(CERTIFICATE_PATH);
+	priv_key_path = profile.authPolicy.get_param_value_as_string(PRIV_KEY_PATH);
 
 	timer_task = NULL;
 	state = BEGIN;
@@ -328,6 +329,7 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 
 	//BERTA
 	certificate_path = profile.authPolicy.get_param_value_as_string(CERTIFICATE_PATH);
+	priv_key_path = profile.authPolicy.get_param_value_as_string(PRIV_KEY_PATH);
 
 	keystore_path = profile.authPolicy.get_param_value_as_string(KEYSTORE_PATH);
 	if (keystore_path == std::string()) {
@@ -766,19 +768,17 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 		timer.scheduleTask(sc->timer_task, timeout);*/
 
 
-/*	UcharArray pre_master_secret;
+	UcharArray pre_master_secret;
 	decode_client_key_exchange_tls_hand(message.obj_value_, pre_master_secret);
 
 	EVP_PKEY *privkey = NULL;
 	RSA *rsakey;
-	int res = -1;
-	char err[130];
 
 	BIO * key;
 	std::stringstream ss;
 	ss << sc->certificate_path.c_str() << "/" << TLSHandSecurityContext::MY_CERTIFICATE;
 
-	key =  BIO_new_file(ss.str().c_str(), "r");
+	key =  BIO_new_file(sc->priv_key_path.c_str(), "r");
 	if (!key) {
 		LOG_ERR("Problems opening key file at: %s",sc->certificate_path.c_str());
 		return -1;
@@ -797,19 +797,18 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 	LOG_DBG("hola berta rsa");
 
-	if((res =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsakey, RSA_PKCS1_OAEP_PADDING)) == -1){
+	if((pre_master_secret.length =  RSA_private_decrypt(pre_master_secret.length, pre_master_secret.data, pre_master_secret.data, rsakey, RSA_PKCS1_OAEP_PADDING)) == -1){
 		LOG_ERR("Error decrypting pre-master secret");
 		ERR_load_crypto_strings();
-		ERR_error_string(ERR_get_error(), err);
-		LOG_ERR("Error decrypting message: %s\n", err);
+		ERR_error_string(ERR_get_error(), NULL);
 	}
 	LOG_DBG("hola berta fi private");
 
 
-	EVP_PKEY_free(privkey); //necesrai?
+	//EVP_PKEY_free(privkey); //necesrai?
 	LOG_DBG("pre_master_secret.length:" "%d", pre_master_secret.length);
 	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
-	LOG_DBG("fi process keys");*/
+	LOG_DBG("fi process keys");
 
 	return IAuthPolicySet::IN_PROGRESS;
 
@@ -863,9 +862,6 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	pre_master_secret.data = new unsigned char[48];
 	pre_master_secret.length = 48;
 
-	enc_pre_master_secret.data = new unsigned char[48];
-	enc_pre_master_secret.length = 48;
-
 	EVP_PKEY *pubkey = NULL;
 	RSA *rsa_pubkey = NULL;
 
@@ -888,17 +884,18 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 		LOG_ERR("EVP_PKEY_get1_RSA: failed. %s",
 				ERR_error_string(ERR_get_error(), NULL));
 
+	enc_pre_master_secret.data = new unsigned char[RSA_size(rsa_pubkey)];
+
 	LOG_DBG("before encryting enc_pre_master length %d" , enc_pre_master_secret.length);
 	LOG_DBG("%d bits Key\n", EVP_PKEY_bits(pubkey));
 	LOG_DBG("%d bytes RSA Key\n", RSA_size(rsa_pubkey));
-
 
 
 	if((enc_pre_master_secret.length = RSA_public_encrypt(pre_master_secret.length,
 								pre_master_secret.data,
 								enc_pre_master_secret.data,
 								rsa_pubkey,
-								RSA_NO_PADDING)) == -1){
+								RSA_PKCS1_OAEP_PADDING)) == -1){
 		LOG_ERR("Error encrypting pre-master secret");
 		LOG_ERR("Error encrypting challenge with RSA public key: %s", ERR_error_string(ERR_get_error(), NULL));
 		//return -1;
