@@ -35,6 +35,7 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <openssl/sha.h>
+ #include <openssl/hmac.h>
 
 
 
@@ -298,6 +299,7 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 	state = BEGIN;
 
 	cert = NULL;
+	other_cert = NULL;
 	cert_received = false;
 	hello_received = false;
 }
@@ -523,10 +525,6 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
 	sec_man->add_security_context(sc);
 
-	LOG_DBG("initiate auth server RANDOMS\n");
-	LOG_DBG("client random: %d", *sc->client_random.random_bytes.data);
-	LOG_DBG("server random: %d", *sc->server_random.random_bytes.data);
-
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
@@ -586,14 +584,34 @@ int AuthTLSHandPolicySet::calculate_master_secret(TLSHandSecurityContext * sc, U
 	LOG_DBG("client random: %d", *sc->client_random.random_bytes.data);
 	LOG_DBG("server random: %d", *sc->server_random.random_bytes.data);
 
-	/*UcharArray aux;
-	aux.data = new char('master secret');
-	aux.length = 13
+	UcharArray s_ms(14);
+	unsigned char ptr[] = "master secret";
+	s_ms.data = (unsigned char *)(&ptr);
 
-	unsigned char a[3];
-	UcharArray seed(aux, sc->client_random.random_bytes, sc->server_random.random_bytes);
+	LOG_DBG("provaa: %s", s_ms.data);
+	LOG_DBG("provaa: %d", s_ms.length);
 
-	//a[0] =
+	UcharArray seed(s_ms, sc->client_random.random_bytes, sc->server_random.random_bytes);
+	UcharArray a[3];
+	a[0].data = seed.data;
+	a[0].length = 1;
+
+	a[1].data = seed.data+1;
+	a[1].length = 1;
+
+	LOG_DBG("INTERMEDIATE HASH 1 : %d", *seed.data);
+	LOG_DBG("INTERMEDIATE HASH 1 : %d", seed.length);
+
+
+/*
+	UcharArray intermidiateHash1(300); //????mirar a quan!
+	const EVP_MD *sha256;
+	sha256 = EVP_sha256(); //no sha1??
+
+	//intermidiateHash1.data = HMAC(sha256, pre.data, pre.length, a[0].data, a[0].length, NULL, NULL);
+
+	LOG_DBG("INTERMEDIATE HASH 1 : %d", *intermidiateHash1.data);
+	LOG_DBG("INTERMEDIATE HASH 1 : %d", intermidiateHash1.length);
 */
 	return 0;
 
@@ -631,21 +649,11 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 
 	sc->hello_received = true;
 
-	LOG_DBG("BEFORE decoding server hello RANDOMS\n");
-	LOG_DBG("client random: %d", *sc->client_random.random_bytes.data);
-	LOG_DBG("server random: %d", *sc->server_random.random_bytes.data);
-
 	decode_server_hello_tls_hand(message.obj_value_,
 			sc->server_random,
 			sc->cipher_suite,
 			sc->compress_method,
 			sc->version);
-
-	LOG_DBG("RANDOMS\n");
-	LOG_DBG("client random: %d",*sc->client_random.random_bytes.data);
-	LOG_DBG("server random: %d", *sc->server_random.random_bytes.data);
-
-
 
 	//if ha rebut server certificate-< canvi estat , enviar misatges client
 	if(sc->cert_received) {
@@ -981,11 +989,6 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 
 	//sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA; //canviar a un de nou o no cal???
 	LOG_DBG("fi client key exchange");
-
-
-	LOG_DBG("soc client");
-	LOG_DBG("client random: %d", *sc->client_random.random_bytes.data);
-	LOG_DBG("server random: %d", *sc->server_random.random_bytes.data);
 
 	return IAuthPolicySet::IN_PROGRESS;
 }
