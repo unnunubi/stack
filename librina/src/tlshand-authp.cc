@@ -523,6 +523,10 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
 	sec_man->add_security_context(sc);
 
+	LOG_DBG("initiate auth server RANDOMS\n");
+	LOG_DBG("client random: %d", *sc->client_random.random_bytes.data);
+	LOG_DBG("server random: %d", *sc->server_random.random_bytes.data);
+
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
@@ -579,8 +583,8 @@ int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext
 int AuthTLSHandPolicySet::calculate_master_secret(TLSHandSecurityContext * sc, UcharArray pre)
 {
 	LOG_DBG("soc server calculating ms");
-	LOG_DBG("client random: %d", sc->client_random.random_bytes.data);
-	LOG_DBG("server random: %d", sc->server_random.random_bytes.data);
+	LOG_DBG("client random: %d", *sc->client_random.random_bytes.data);
+	LOG_DBG("server random: %d", *sc->server_random.random_bytes.data);
 
 	/*UcharArray aux;
 	aux.data = new char('master secret');
@@ -628,8 +632,8 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 	sc->hello_received = true;
 
 	LOG_DBG("BEFORE decoding server hello RANDOMS\n");
-	LOG_DBG("client random: %d", sc->client_random.random_bytes.data);
-	LOG_DBG("server random: %d", sc->server_random.random_bytes.data);
+	LOG_DBG("client random: %d", *sc->client_random.random_bytes.data);
+	LOG_DBG("server random: %d", *sc->server_random.random_bytes.data);
 
 	decode_server_hello_tls_hand(message.obj_value_,
 			sc->server_random,
@@ -638,8 +642,8 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 			sc->version);
 
 	LOG_DBG("RANDOMS\n");
-	LOG_DBG("client random: %d", sc->client_random.random_bytes.data);
-	LOG_DBG("server random: %d", sc->server_random.random_bytes.data);
+	LOG_DBG("client random: %d",*sc->client_random.random_bytes.data);
+	LOG_DBG("server random: %d", *sc->server_random.random_bytes.data);
 
 
 
@@ -980,8 +984,8 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 
 
 	LOG_DBG("soc client");
-	LOG_DBG("client random: %d", sc->client_random.random_bytes.data);
-	LOG_DBG("server random: %d", sc->server_random.random_bytes.data);
+	LOG_DBG("client random: %d", *sc->client_random.random_bytes.data);
+	LOG_DBG("server random: %d", *sc->server_random.random_bytes.data);
 
 	return IAuthPolicySet::IN_PROGRESS;
 }
