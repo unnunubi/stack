@@ -603,16 +603,16 @@ int AuthTLSHandPolicySet::calculate_master_secret(TLSHandSecurityContext * sc, U
 	LOG_DBG("INTERMEDIATE HASH 1 : %d", seed.length);
 
 
-/*
+
 	UcharArray intermidiateHash1(300); //????mirar a quan!
 	const EVP_MD *sha256;
 	sha256 = EVP_sha256(); //no sha1??
 
-	//intermidiateHash1.data = HMAC(sha256, pre.data, pre.length, a[0].data, a[0].length, NULL, NULL);
+	intermidiateHash1.data = HMAC(sha256, pre.data, pre.length, a[0].data, a[0].length, NULL, NULL);
 
 	LOG_DBG("INTERMEDIATE HASH 1 : %d", *intermidiateHash1.data);
 	LOG_DBG("INTERMEDIATE HASH 1 : %d", intermidiateHash1.length);
-*/
+
 	return 0;
 
 }
@@ -848,13 +848,10 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 		ERR_load_crypto_strings();
 		ERR_error_string(ERR_get_error(), NULL);
 	}
-	LOG_DBG("fi private decrypt");
-
 
 	//EVP_PKEY_free(privkey); //necesrai?
 	LOG_DBG("pre_master_secret.length:" "%d", dec_pre_master_secret.length);
-	LOG_DBG("pre_master_secret.data:");
-	LOG_DBG("decrypted pre_master_secret.data:" "%d", dec_pre_master_secret.data);
+	LOG_DBG("decrypted pre_master_secret.data:" "%d", *dec_pre_master_secret.data);
 	LOG_DBG("decrypted pre_master_secret.data:" "%s", dec_pre_master_secret.data);
 
 
@@ -921,7 +918,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 
 	//printar el random
 	LOG_DBG("pre_master_secret.data:");
-	LOG_DBG("pre_master_secret.data:" "%d", pre_master_secret.data);
+	LOG_DBG("pre_master_secret.data:" "%d", *pre_master_secret.data);
 	LOG_DBG("pre_master_secret.data:" "%s \n", pre_master_secret.data);
 
 	if(sc->other_cert == NULL)LOG_ERR("other cert mal guardat"); //aquesta comprovacio no cal, nomes es prova
@@ -939,11 +936,6 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 
 	enc_pre_master_secret.data = new unsigned char[RSA_size(rsa_pubkey)];
 
-	LOG_DBG("before encryting enc_pre_master length %d" , enc_pre_master_secret.length);
-	LOG_DBG("%d bits Key\n", EVP_PKEY_bits(pubkey));
-	LOG_DBG("%d bytes RSA Key\n", RSA_size(rsa_pubkey));
-
-
 	if((enc_pre_master_secret.length = RSA_public_encrypt(pre_master_secret.length,
 								pre_master_secret.data,
 								enc_pre_master_secret.data,
@@ -960,8 +952,6 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	//es necessari??? free pkey
 	/*EVP_PKEY_free(pubkey);
 	RSA_free(rsa_pubkey);*/
-
-	LOG_DBG("end public client encrypt");
 
 	//Send client key exchange
 	try {
