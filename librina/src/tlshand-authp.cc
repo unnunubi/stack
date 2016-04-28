@@ -34,7 +34,7 @@
 #include <string.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
-
+#include <openssl/sha.h>
 
 
 
@@ -576,6 +576,25 @@ int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext
 	return 0;
 }
 
+int AuthTLSHandPolicySet::calculate_master_secret(TLSHandSecurityContext * sc, UcharArray pre)
+{
+	LOG_DBG("soc server calculating ms");
+	LOG_DBG("client random: %d", sc->client_random.random_bytes.data);
+	LOG_DBG("server random: %d", sc->server_random.random_bytes.data);
+
+	/*UcharArray aux;
+	aux.data = new char('master secret');
+	aux.length = 13
+
+	unsigned char a[3];
+	UcharArray seed(aux, sc->client_random.random_bytes, sc->server_random.random_bytes);
+
+	//a[0] =
+*/
+	return 0;
+
+}
+
 int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
@@ -613,6 +632,8 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 			sc->cipher_suite,
 			sc->compress_method,
 			sc->version);
+
+
 
 	//if ha rebut server certificate-< canvi estat , enviar misatges client
 	if(sc->cert_received) {
@@ -815,7 +836,10 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	LOG_DBG("pre_master_secret.data:");
 	LOG_DBG("decrypted pre_master_secret.data:" "%d", dec_pre_master_secret.data);
 	LOG_DBG("decrypted pre_master_secret.data:" "%s", dec_pre_master_secret.data);
-	LOG_DBG("fi process keys");
+
+
+	//start computing MASTERSECRET
+	calculate_master_secret(sc, dec_pre_master_secret);
 
 	return IAuthPolicySet::IN_PROGRESS;
 
@@ -945,6 +969,12 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 
 	//sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA; //canviar a un de nou o no cal???
 	LOG_DBG("fi client key exchange");
+
+
+	LOG_DBG("soc client");
+	LOG_DBG("client random: %d", sc->client_random.random_bytes.data);
+	LOG_DBG("server random: %d", sc->server_random.random_bytes.data);
+
 	return IAuthPolicySet::IN_PROGRESS;
 }
 

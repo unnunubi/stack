@@ -45,4 +45,3 @@ message clientCertificateTLSHandshake_t {
 message clientKeyExchangeTLSHandshake_t {
 	optional bytes enc_pmaster_secret = 1;			// The encrypted pre-master secret
 }	
-
