@@ -627,11 +627,19 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 
 	sc->hello_received = true;
 
+	LOG_DBG("BEFORE decoding server hello RANDOMS\n");
+	LOG_DBG("client random: %d", sc->client_random.random_bytes.data);
+	LOG_DBG("server random: %d", sc->server_random.random_bytes.data);
+
 	decode_server_hello_tls_hand(message.obj_value_,
 			sc->server_random,
 			sc->cipher_suite,
 			sc->compress_method,
 			sc->version);
+
+	LOG_DBG("RANDOMS\n");
+	LOG_DBG("client random: %d", sc->client_random.random_bytes.data);
+	LOG_DBG("server random: %d", sc->server_random.random_bytes.data);
 
 
 
