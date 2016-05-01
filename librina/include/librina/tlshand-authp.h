@@ -177,7 +177,7 @@ private:
 	//FI BERTA
 
 	int load_credentials(TLSHandSecurityContext * sc);
-	int calculate_master_secret(TLSHandSecurityContext * sc, UcharArray pre);
+	int calculate_master_secret(TLSHandSecurityContext * sc, UcharArray& pre);
 
 	//Load the authentication certificate required for this DIF from a file
 	int load_authentication_certificate(TLSHandSecurityContext * sc);

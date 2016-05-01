@@ -578,40 +578,68 @@ int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext
 	return 0;
 }
 
-int AuthTLSHandPolicySet::calculate_master_secret(TLSHandSecurityContext * sc, UcharArray pre)
+int AuthTLSHandPolicySet::calculate_master_secret(TLSHandSecurityContext * sc, UcharArray& pre)
 {
-	LOG_DBG("soc server calculating ms");
-	LOG_DBG("client random: %d", *sc->client_random.random_bytes.data);
-	LOG_DBG("server random: %d", *sc->server_random.random_bytes.data);
+	LOG_DBG("calculating ms");
+	LOG_DBG("client random: %d", sc->client_random.random_bytes.length);
+	LOG_DBG("server random: %d", sc->server_random.random_bytes.length);
 
-	UcharArray s_ms(14);
-	unsigned char ptr[] = "master secret";
-	s_ms.data = (unsigned char *)(&ptr);
+	unsigned char aux[14] = "master secret";
+	LOG_DBG("aux: %d", aux);
 
-	LOG_DBG("provaa: %s", s_ms.data);
-	LOG_DBG("provaa: %d", s_ms.length);
+	UcharArray ms;
+	ms.length = 14;
+	ms.data = new unsigned char[14];
 
-	UcharArray seed(s_ms, sc->client_random.random_bytes, sc->server_random.random_bytes);
-	UcharArray a[3];
-	a[0].data = seed.data;
-	a[0].length = 1;
-
-	a[1].data = seed.data+1;
-	a[1].length = 1;
-
-	LOG_DBG("INTERMEDIATE HASH 1 : %d", *seed.data);
-	LOG_DBG("INTERMEDIATE HASH 1 : %d", seed.length);
+	memcpy(ms.data, aux, ms.length);
+	LOG_DBG("ms  %s", ms.data);
+	LOG_DBG("ms  %d", &ms.data);
 
 
+//calcul a0, a1, i a2
+	UcharArray seed(ms, sc->client_random.random_bytes, sc->server_random.random_bytes);
+	LOG_DBG("seed : %d", seed.length);
 
-	UcharArray intermidiateHash1(300); //????mirar a quan!
-	const EVP_MD *sha256;
-	sha256 = EVP_sha256(); //no sha1??
+	UcharArray a0(1);
+	memcpy(a0.data, seed.data, 1);
+	LOG_DBG("a0.data: %s", a0.data);
 
-	intermidiateHash1.data = HMAC(sha256, pre.data, pre.length, a[0].data, a[0].length, NULL, NULL);
+	UcharArray a1(32); //ha da ser 32 ???? adreça de mem
+	HMAC(EVP_sha256(),pre.data, pre.length, a0.data, a0.length, a1.data, (unsigned *)(&a1.length));
+	LOG_DBG("a1 : %d", a1.data);
+	LOG_DBG("a1 length : %d", a1.length);
 
-	LOG_DBG("INTERMEDIATE HASH 1 : %d", *intermidiateHash1.data);
-	LOG_DBG("INTERMEDIATE HASH 1 : %d", intermidiateHash1.length);
+	UcharArray a2(32);
+	HMAC(EVP_sha256(),pre.data, pre.length, a1.data, a1.length, a2.data, (unsigned *)(&a2.length));
+	LOG_DBG("a2 : %d", a2.data);
+	LOG_DBG("a2 length : %d", a2.length);
+
+//calcul 2 hmac finals de concatenacio
+	UcharArray a10(a1,a0);
+	UcharArray res1(32);
+	HMAC(EVP_sha256(),pre.data, pre.length, a10.data, a10.length, res1.data, (unsigned *)(&res1.length));
+	LOG_DBG("res1 : %d", res1.data);
+	LOG_DBG("res1 length : %d", res1.length);
+
+	UcharArray a20(a2,a0);
+	UcharArray res2(32);
+	HMAC(EVP_sha256(),pre.data, pre.length, a20.data, a20.length, res2.data, (unsigned *)(&res2.length));
+	LOG_DBG("res2 : %d", res2.data);
+	LOG_DBG("res2 length : %d", res2.length);
+
+//fi calculs dos parts del master secret;
+	UcharArray aux_master_secret(res1,res2);
+	UcharArray master_secret(48);
+	memcpy(master_secret.data, aux_master_secret.data, 48);
+//borrar debugs
+	LOG_DBG("ms length : %d", master_secret.length);
+	for (int i=0; i< master_secret.length; i++) {
+		LOG_DBG("ms data : %d %d", i, master_secret.data[i]);
+	}
+
+
+
+	LOG_DBG("fin calculate");
 
 	return 0;
 
@@ -857,6 +885,8 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 	//start computing MASTERSECRET
 	calculate_master_secret(sc, dec_pre_master_secret);
+
+	LOG_DBG("return from calculate ms");
 
 	return IAuthPolicySet::IN_PROGRESS;
 
