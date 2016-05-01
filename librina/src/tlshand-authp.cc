@@ -637,8 +637,6 @@ int AuthTLSHandPolicySet::calculate_master_secret(TLSHandSecurityContext * sc, U
 		LOG_DBG("ms data : %d %d", i, master_secret.data[i]);
 	}
 
-
-
 	LOG_DBG("fin calculate");
 
 	return 0;
@@ -1009,6 +1007,9 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 
 	//sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA; //canviar a un de nou o no cal???
 	LOG_DBG("fi client key exchange");
+
+	calculate_master_secret(sc, pre_master_secret);
+	LOG_DBG("fi calc ms client");
 
 	return IAuthPolicySet::IN_PROGRESS;
 }
