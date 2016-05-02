@@ -454,6 +454,16 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	} catch (Exception &e){
 		return IAuthPolicySet::FAILED;
 	}
+	//Initialized verify hash, used in certificate verify message
+	sc->verify_hash.data = new unsigned char[32*5];
+	sc->verify_hash.length = 32*5;
+
+	//Get auth policy options to obtain first hase message [0,--31]
+	UcharArray first(sizeof(auth_policy.options));
+	LOG_DBG("size opt %d", sizeof(auth_policy.options));
+	memcpy(first.data, &auth_policy.options, sizeof(auth_policy.options));
+
+
 
 	//Generate server random
 	sc->server_random.utc_unix_time = (unsigned int) time(NULL);
@@ -600,17 +610,19 @@ int AuthTLSHandPolicySet::calculate_master_secret(TLSHandSecurityContext * sc, U
 	UcharArray seed(ms, sc->client_random.random_bytes, sc->server_random.random_bytes);
 	LOG_DBG("seed : %d", seed.length);
 
-	UcharArray a0(1);
-	memcpy(a0.data, seed.data, 1);
+	UcharArray a0(32);
+	memcpy(a0.data, seed.data, 32);
 	LOG_DBG("a0.data: %s", a0.data);
 
-	UcharArray a1(32); //ha da ser 32 ???? adreça de mem
+	UcharArray a1(32);
 	HMAC(EVP_sha256(),pre.data, pre.length, a0.data, a0.length, a1.data, (unsigned *)(&a1.length));
+	if(a1.data == NULL)LOG_ERR("Error calculating master secret");
 	LOG_DBG("a1 : %d", a1.data);
 	LOG_DBG("a1 length : %d", a1.length);
 
 	UcharArray a2(32);
 	HMAC(EVP_sha256(),pre.data, pre.length, a1.data, a1.length, a2.data, (unsigned *)(&a2.length));
+	if(a2.data == NULL)LOG_ERR("Error calculating master secret");
 	LOG_DBG("a2 : %d", a2.data);
 	LOG_DBG("a2 length : %d", a2.length);
 
@@ -618,12 +630,14 @@ int AuthTLSHandPolicySet::calculate_master_secret(TLSHandSecurityContext * sc, U
 	UcharArray a10(a1,a0);
 	UcharArray res1(32);
 	HMAC(EVP_sha256(),pre.data, pre.length, a10.data, a10.length, res1.data, (unsigned *)(&res1.length));
+	if(res1.data == NULL)LOG_ERR("Error calculating master secret");
 	LOG_DBG("res1 : %d", res1.data);
 	LOG_DBG("res1 length : %d", res1.length);
 
 	UcharArray a20(a2,a0);
 	UcharArray res2(32);
 	HMAC(EVP_sha256(),pre.data, pre.length, a20.data, a20.length, res2.data, (unsigned *)(&res2.length));
+	if(res2.data == NULL)LOG_ERR("Error calculating master secret");
 	LOG_DBG("res2 : %d", res2.data);
 	LOG_DBG("res2 length : %d", res2.length);
 
@@ -637,6 +651,7 @@ int AuthTLSHandPolicySet::calculate_master_secret(TLSHandSecurityContext * sc, U
 		LOG_DBG("ms data : %d %d", i, master_secret.data[i]);
 	}
 
+	sc->master_secret = master_secret;
 	LOG_DBG("fin calculate");
 
 	return 0;

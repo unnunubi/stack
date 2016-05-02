@@ -108,6 +108,13 @@ public:
 	std::string priv_key_path;
 
 
+	//Master secret generated in key exchange
+	UcharArray master_secret;
+
+	//hashed received/sent messages (5mess*32length);
+	UcharArray verify_hash;
+
+
 
 	//Berta certificates presence
 	bool cert_received;
