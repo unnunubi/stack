@@ -431,7 +431,7 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 
 	//hash with sha256
 	unsigned char hash1[SHA256_DIGEST_LENGTH];
-	SHA256_CTX sha256;
+	/*SHA256_CTX sha256;
 	if(!SHA256_Init(&sha256)){
 		LOG_ERR("Error initializing sha256");
 		throw Exception();
@@ -443,10 +443,11 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 	if(!SHA256_Final(hash1, &sha256)){
 		LOG_ERR("Error finalizing sha256");
 		throw Exception();
-	}
+	}*/
+	SHA256(first.data, first.length, hash1);
 
 	//prepare verify_hash vector for posterior signing
-	memcpy(sc->verify_hash.data, &hash1, 32);
+	memcpy(sc->verify_hash.data, hash1, 32);
 	LOG_DBG("verify hash1:" "%d", *sc->verify_hash.data);
 	LOG_DBG("verify hash1:" "%s", sc->verify_hash.data);
 
@@ -499,7 +500,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	//hash with sha256
 	unsigned char hash1[SHA256_DIGEST_LENGTH];
 	SHA256_CTX sha256;
-	if(!SHA256_Init(&sha256)){
+	/*if(!SHA256_Init(&sha256)){
 		LOG_ERR("Error initializing sha256");
 		return IAuthPolicySet::FAILED;
 	}
@@ -510,10 +511,11 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	if(!SHA256_Final(hash1, &sha256)){
 		LOG_ERR("Error finalizing sha256");
 		return IAuthPolicySet::FAILED;
-	}
+	}*/
+	SHA256(first.data, first.length, hash1);
 
 	//prepare verify_hash vector for posterior signing
-	memcpy(sc->verify_hash.data, &hash1, 32);
+	memcpy(sc->verify_hash.data, hash1, 32);
 	LOG_DBG("verify hash1:" "%d", *sc->verify_hash.data);
 	LOG_DBG("verify hash1:" "%s", sc->verify_hash.data);
 
