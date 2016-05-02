@@ -151,6 +151,7 @@ public:
 	static const std::string SERVER_CERTIFICATE;
 	static const std::string CLIENT_CERTIFICATE;
 	static const std::string CLIENT_KEY_EXCHANGE;
+	static const std::string CLIENT_CERTIFICATE_VERIFY;
 
 	AuthTLSHandPolicySet(rib::RIBDaemonProxy * ribd,
 			     ISecurityManager * sm);
@@ -178,9 +179,12 @@ private:
 							 int session_id);
 	int process_client_key_exchange_message(const cdap::CDAPMessage& message,
 								 int session_id);
+	int process_client_certificate_verify_message(const cdap::CDAPMessage& message,
+									 int session_id);
 	int send_client_messages(TLSHandSecurityContext * sc);
 	int send_client_certificate(TLSHandSecurityContext * sc);
 	int send_client_key_exchange(TLSHandSecurityContext * sc);
+	int send_client_certificate_verify(TLSHandSecurityContext * sc);
 	//FI BERTA
 
 	int load_credentials(TLSHandSecurityContext * sc);

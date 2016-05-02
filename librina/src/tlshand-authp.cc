@@ -242,6 +242,35 @@ void decode_client_key_exchange_tls_hand(const ser_obj_t &message,
 		}
 }
 
+//Client certificate verify
+void encode_client_certificate_verify_tls_hand(const UcharArray& enc_verify_hash,
+		ser_obj_t& result)
+{
+	rina::auth::policies::googleprotobuf::clientCertificateVerifyTLSHandshake_t gpb_cert_verify;
+
+	gpb_cert_verify.set_enc_verify_hash(enc_verify_hash.data, enc_verify_hash.length);
+
+	int size = gpb_cert_verify.ByteSize();
+	result.message_ = new unsigned char[size];
+	result.size_ = size;
+	gpb_cert_verify.SerializeToArray(result.message_ , size);
+}
+void decode_client_certificate_verify_tls_hand(const ser_obj_t &message,
+		 UcharArray& enc_verify_hash)
+{
+	rina::auth::policies::googleprotobuf::clientCertificateVerifyTLSHandshake_t gpb_cert_verify;
+
+	gpb_cert_verify.ParseFromArray(message.message_, message.size_);
+
+		if (gpb_cert_verify.has_enc_verify_hash()) {
+			enc_verify_hash.data =  new unsigned char[gpb_cert_verify.enc_verify_hash().size()];
+			memcpy(enc_verify_hash.data,
+					gpb_cert_verify.enc_verify_hash().data(),
+					gpb_cert_verify.enc_verify_hash().size());
+			enc_verify_hash.length = gpb_cert_verify.enc_verify_hash().size();
+		}
+}
+
 
 
 // Class TLSHandSecurityContext
@@ -357,6 +386,8 @@ const std::string AuthTLSHandPolicySet::SERVER_HELLO = "Server Hello";
 const std::string AuthTLSHandPolicySet::SERVER_CERTIFICATE = "Server Certificate";
 const std::string AuthTLSHandPolicySet::CLIENT_CERTIFICATE = "Client Certificate";
 const std::string AuthTLSHandPolicySet::CLIENT_KEY_EXCHANGE = "Client key exchange";
+const std::string AuthTLSHandPolicySet::CLIENT_CERTIFICATE_VERIFY = "Client certificate verify";
+
 
 AuthTLSHandPolicySet::AuthTLSHandPolicySet(rib::RIBDaemonProxy * ribd,
 		ISecurityManager * sm) :
@@ -608,6 +639,10 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 	if (message.obj_class_ == CLIENT_KEY_EXCHANGE) {
 		LOG_DBG("client key_echange OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_client_key_exchange_message(message, session_id);
+	}
+	if (message.obj_class_ == CLIENT_CERTIFICATE_VERIFY) {
+		LOG_DBG("client process verify OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
+		return process_client_certificate_verify_message(message, session_id);
 	}
 
 	return rina::IAuthPolicySet::FAILED;
@@ -1003,6 +1038,83 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 }
 
+int AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::CDAPMessage& message,
+		int session_id)
+{
+	LOG_DBG("ini server decoding client certificate verify");
+
+	TLSHandSecurityContext * sc;
+
+	if (message.obj_value_.message_ == 0) {
+		LOG_ERR("Null object value");
+		return IAuthPolicySet::FAILED;
+	}
+
+	sc = dynamic_cast<TLSHandSecurityContext *>(sec_man->get_security_context(session_id));
+	if (!sc) {
+		LOG_ERR("Could not retrieve Security Context for session: %d", session_id);
+		return IAuthPolicySet::FAILED;
+	}
+
+	ScopedLock sc_lock(lock);
+
+	if (sc->state != TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS) {
+		LOG_ERR("Wrong session state: %d", sc->state);
+		sec_man->remove_security_context(session_id);
+		delete sc;
+		return IAuthPolicySet::FAILED;
+	}
+
+	//TIMER????
+	/*sc->timer_task = new CancelAuthTimerTask(sec_man, session_id);
+		timer.scheduleTask(sc->timer_task, timeout);*/
+
+
+	UcharArray enc_verify_hash;	//Quin size ha de tenir? :/
+	decode_client_certificate_verify_tls_hand(message.obj_value_, enc_verify_hash);
+
+	UcharArray dec_verify_hash;
+	EVP_PKEY *pubkey = NULL;
+	RSA *rsa_pubkey = NULL;
+
+	if ((pubkey = X509_get_pubkey(sc->cert)) == NULL)
+		LOG_ERR("Error getting public key from certificate %s",
+				ERR_error_string(ERR_get_error(), NULL));
+
+	rsa_pubkey = EVP_PKEY_get1_RSA(pubkey);
+
+	if(rsa_pubkey == NULL)
+		LOG_ERR("EVP_PKEY_get1_RSA: failed. %s",
+				ERR_error_string(ERR_get_error(), NULL));
+
+	dec_verify_hash.data = new unsigned char[RSA_size(rsa_pubkey)];
+
+	if((dec_verify_hash.length = RSA_public_decrypt(enc_verify_hash.length,
+			enc_verify_hash.data,
+			dec_verify_hash.data,
+			rsa_pubkey,
+			RSA_PKCS1_PADDING)) == -1){
+		LOG_ERR("Error decrypting certificate verify");
+		LOG_ERR("Error decrypting certificate verify with RSA public key: %s", ERR_error_string(ERR_get_error(), NULL));
+		return -1;
+	}
+
+	//Compare calculated hash with received decrypted hash, should be the same if ok auth
+	if (dec_verify_hash != sc->verify_hash) {
+		LOG_ERR("Error authenticating server. Decrypted Hashed challenge: %s, calculated challenge: %s",
+				dec_verify_hash.toString().c_str(),
+				sc->verify_hash.toString().c_str());
+		return -1;
+	}
+	LOG_DBG("Authenticating server. Decrypted Hashed challenge: %s, calculated challenge: %s",
+			dec_verify_hash.toString().c_str(),
+			sc->verify_hash.toString().c_str());
+
+	LOG_DBG("fi process client verify");
+	return IAuthPolicySet::IN_PROGRESS;
+}
+
+
 int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 {
 
@@ -1156,6 +1268,66 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
+int AuthTLSHandPolicySet::send_client_certificate_verify(TLSHandSecurityContext * sc)
+{
+
+	RSA *rsa_priv_key;
+	BIO *key;
+
+	key =  BIO_new_file(sc->priv_key_path.c_str(), "r");
+	if (!key) {
+		LOG_ERR("Problems opening key file at: %s",sc->priv_key_path.c_str());
+		return -1;
+	}
+	rsa_priv_key = PEM_read_bio_RSAPrivateKey(key, NULL, 0, NULL);
+	BIO_free(key);
+
+	if (!rsa_priv_key) {
+		LOG_ERR("Problems reading  key",ERR_error_string(ERR_get_error(), NULL));
+		return -1;
+	}
+
+	//encrypt the hash of all mesages with private rsa key IPCP A
+	UcharArray enc_cert_verify(256);
+	if((enc_cert_verify.length = RSA_private_encrypt(sc->verify_hash.length,
+							sc->verify_hash.data,
+							enc_cert_verify.data,
+							rsa_priv_key,
+							RSA_PKCS1_PADDING)) == -1){
+		LOG_ERR("Error encrypting certificate verify hash");
+		LOG_ERR("Error encrypting certificate verify hash with private key: %s", ERR_error_string(ERR_get_error(), NULL));
+		return -1;
+	}
+
+	LOG_DBG("After encryting cert verify length %d" , enc_cert_verify.length);
+
+	//Send client key exchange
+	try {
+		cdap_rib::flags_t flags;
+		cdap_rib::filt_info_t filt;
+		cdap_rib::obj_info_t obj_info;
+		cdap::StringEncoder encoder;
+
+		obj_info.class_ = CLIENT_CERTIFICATE_VERIFY;
+		obj_info.name_ = CLIENT_CERTIFICATE_VERIFY;
+		obj_info.inst_ = 0;
+		encode_client_certificate_verify_tls_hand(enc_cert_verify,
+				obj_info.value_);
+
+		rib_daemon->remote_write(sc->con,
+				obj_info,
+				flags,
+				filt,
+				NULL);
+	} catch (Exception &e) {
+		LOG_ERR("Problems encoding and sending CDAP message: %s",e.what());
+		sec_man->destroy_security_context(sc->id);
+		return IAuthPolicySet::FAILED;
+	}
+	return 0;
+
+}
+
 int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 {
 	//canviar estat, a wait el que sigui i fer tres funcions que cfacin dels tres misatges corresponents
@@ -1174,6 +1346,9 @@ int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 	//Send second message corresponding to client_key_exchange
 	send_client_key_exchange(sc);
 	LOG_DBG("after calling send client_key exchange");
+
+	send_client_certificate_verify(sc);
+	LOG_DBG("after calling send client certificate verify");
 
 	return IAuthPolicySet::IN_PROGRESS;
 }
