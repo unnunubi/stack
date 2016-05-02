@@ -555,11 +555,11 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 
 	//hash with sha256
 	unsigned char hash2[SHA256_DIGEST_LENGTH];
-	/*SHA256_CTX sha256;
+	//SHA256_CTX sha256;
 	if(!SHA256_Init(&sha256)){
 		LOG_ERR("Error initializing sha256");
 		return IAuthPolicySet::FAILED;
-	}*/
+	}
 	if(!SHA256_Update(&sha256, second.data, second.length)){
 		LOG_ERR("Error updating sha256");
 		return IAuthPolicySet::FAILED;
