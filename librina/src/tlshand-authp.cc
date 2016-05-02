@@ -446,6 +446,8 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data, hash1, 32);
+	LOG_DBG("verify hash1:" "%d", *sc->verify_hash.data);
+	LOG_DBG("verify hash1:" "%s", sc->verify_hash.data);
 
 	return auth_policy;
 }
@@ -509,6 +511,9 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data, hash1, 32);
+	LOG_DBG("verify hash1:" "%d", *sc->verify_hash.data);
+	LOG_DBG("verify hash1:" "%s", sc->verify_hash.data);
+
 
 
 	//Generate server random
