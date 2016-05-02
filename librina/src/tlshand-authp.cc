@@ -427,6 +427,7 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 	UcharArray first(sizeof(auth_policy.options));
 	LOG_DBG("size opt %d", sizeof(auth_policy.options));
 	memcpy(first.data, &auth_policy.options, sizeof(auth_policy.options));
+	LOG_DBG("FIRST DATA\n %s", first.data);
 
 	//hash with sha256
 	unsigned char hash1[SHA256_DIGEST_LENGTH];
@@ -492,6 +493,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	UcharArray first(sizeof(auth_policy.options));
 	LOG_DBG("size opt %d", sizeof(auth_policy.options));
 	memcpy(first.data, &auth_policy.options, sizeof(auth_policy.options));
+	LOG_DBG("FIRST DATA\n %s", first.data);
 
 	//hash with sha256
 	unsigned char hash1[SHA256_DIGEST_LENGTH];
