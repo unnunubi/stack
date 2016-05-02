@@ -1077,7 +1077,7 @@ int AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::
 	EVP_PKEY *pubkey = NULL;
 	RSA *rsa_pubkey = NULL;
 
-	if ((pubkey = X509_get_pubkey(sc->cert)) == NULL)
+	if ((pubkey = X509_get_pubkey(sc->other_cert)) == NULL)
 		LOG_ERR("Error getting public key from certificate %s",
 				ERR_error_string(ERR_get_error(), NULL));
 
