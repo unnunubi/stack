@@ -419,6 +419,34 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_HELLO_and_CERTIFICATE;
 	sec_man->add_security_context(sc);
 
+	//Initialized verify hash, used in certificate verify message
+	sc->verify_hash.data = new unsigned char[32*5];
+	sc->verify_hash.length = 32*5;
+
+	//Get auth policy options to obtain first hash message [0,--31]
+	UcharArray first(sizeof(auth_policy.options));
+	LOG_DBG("size opt %d", sizeof(auth_policy.options));
+	memcpy(first.data, &auth_policy.options, sizeof(auth_policy.options));
+
+	//hash with sha256
+	unsigned char hash1[SHA256_DIGEST_LENGTH];
+	SHA256_CTX sha256;
+	if(!SHA256_Init(&sha256)){
+		LOG_ERR("Error initializing sha256");
+		throw Exception();
+	}
+	if(!SHA256_Update(&sha256, first.data, first.length)){
+		LOG_ERR("Error updating sha256");
+		throw Exception();
+	}
+	if(!SHA256_Final(hash1, &sha256)){
+		LOG_ERR("Error finalizing sha256");
+		throw Exception();
+	}
+
+	//prepare verify_hash vector for posterior signing
+	memcpy(sc->verify_hash.data, hash1, 32);
+
 	return auth_policy;
 }
 
@@ -458,11 +486,29 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	sc->verify_hash.data = new unsigned char[32*5];
 	sc->verify_hash.length = 32*5;
 
-	//Get auth policy options to obtain first hase message [0,--31]
+	//Get auth policy options to obtain first hash message [0,--31]
 	UcharArray first(sizeof(auth_policy.options));
 	LOG_DBG("size opt %d", sizeof(auth_policy.options));
 	memcpy(first.data, &auth_policy.options, sizeof(auth_policy.options));
 
+	//hash with sha256
+	unsigned char hash1[SHA256_DIGEST_LENGTH];
+	SHA256_CTX sha256;
+	if(!SHA256_Init(&sha256)){
+		LOG_ERR("Error initializing sha256");
+		return IAuthPolicySet::FAILED;
+	}
+	if(!SHA256_Update(&sha256, first.data, first.length)){
+		LOG_ERR("Error updating sha256");
+		return IAuthPolicySet::FAILED;
+	}
+	if(!SHA256_Final(hash1, &sha256)){
+		LOG_ERR("Error finalizing sha256");
+		return IAuthPolicySet::FAILED;
+	}
+
+	//prepare verify_hash vector for posterior signing
+	memcpy(sc->verify_hash.data, hash1, 32);
 
 
 	//Generate server random
@@ -478,10 +524,11 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	}
 
 	//Send Server Hello
+	cdap_rib::obj_info_t obj_info;
 	try {
 		cdap_rib::flags_t flags;
 		cdap_rib::filt_info_t filt;
-		cdap_rib::obj_info_t obj_info;
+		//cdap_rib::obj_info_t obj_info;
 		cdap::StringEncoder encoder;
 
 		obj_info.class_ = SERVER_HELLO;
@@ -494,12 +541,36 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 				obj_info.value_);
 
 		rib_daemon->remote_write(sc->con, obj_info, flags, filt, NULL);
+
 	} catch (Exception &e) {
 		LOG_ERR("Problems encoding and sending CDAP message: %s", e.what());
 		delete sc;
 		return IAuthPolicySet::FAILED;
 	}
 
+	//hash2 to concatenate for verify message
+	UcharArray second(sizeof(obj_info.value_));
+	LOG_DBG("size opt %d", sizeof(obj_info.value_));
+	memcpy(second.data, &obj_info.value_, sizeof(obj_info.value_));
+
+	//hash with sha256
+	unsigned char hash2[SHA256_DIGEST_LENGTH];
+	/*SHA256_CTX sha256;
+	if(!SHA256_Init(&sha256)){
+		LOG_ERR("Error initializing sha256");
+		return IAuthPolicySet::FAILED;
+	}*/
+	if(!SHA256_Update(&sha256, second.data, second.length)){
+		LOG_ERR("Error updating sha256");
+		return IAuthPolicySet::FAILED;
+	}
+	if(!SHA256_Final(hash2, &sha256)){
+		LOG_ERR("Error finalizing sha256");
+		return IAuthPolicySet::FAILED;
+	}
+	//prepare verify_hash vector for posterior signing
+	memcpy(sc->verify_hash.data+32, hash2, 32);
+	//end preparation for certificate verify message
 
 	load_authentication_certificate(sc);
 	//convert x509
@@ -695,6 +766,29 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 			sc->cipher_suite,
 			sc->compress_method,
 			sc->version);
+	//hash2 to concatenate for verify message
+	UcharArray second(sizeof(message.obj_value_));
+	LOG_DBG("size opt %d", sizeof(message.obj_value_));
+	memcpy(second.data, &message.obj_value_, sizeof(message.obj_value_));
+
+	//hash with sha256
+	unsigned char hash2[SHA256_DIGEST_LENGTH];
+	SHA256_CTX sha256;
+	if(!SHA256_Init(&sha256)){
+		LOG_ERR("Error initializing sha256");
+		return IAuthPolicySet::FAILED;
+	}
+	if(!SHA256_Update(&sha256, second.data, second.length)){
+		LOG_ERR("Error updating sha256");
+		return IAuthPolicySet::FAILED;
+	}
+	if(!SHA256_Final(hash2, &sha256)){
+		LOG_ERR("Error finalizing sha256");
+		return IAuthPolicySet::FAILED;
+	}
+	//prepare verify_hash vector for posterior signing
+	memcpy(sc->verify_hash.data+32, hash2, 32);
+	//end preparation for certificate verify message
 
 	//if ha rebut server certificate-< canvi estat , enviar misatges client
 	if(sc->cert_received) {
