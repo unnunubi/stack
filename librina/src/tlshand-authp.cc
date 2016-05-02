@@ -412,8 +412,7 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 	options.compress_methods.push_back(sc->compress_method);
 	options.random = sc->client_random;
 
-	encode_tls_hand_auth_options(options,
-			auth_policy.options);
+	encode_tls_hand_auth_options(options, auth_policy.options);
 
 	//Store security context
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_HELLO_and_CERTIFICATE;
@@ -428,6 +427,7 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 	LOG_DBG("size opt %d", sizeof(auth_policy.options));
 	memcpy(first.data, &auth_policy.options, sizeof(auth_policy.options));
 	LOG_DBG("FIRST DATA\n %s", first.data);
+	LOG_DBG("FIRST len\n %s", first.length);
 
 	//hash with sha256
 	unsigned char hash1[SHA256_DIGEST_LENGTH];
@@ -446,7 +446,7 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 	}
 
 	//prepare verify_hash vector for posterior signing
-	memcpy(sc->verify_hash.data, hash1, 32);
+	memcpy(sc->verify_hash.data, &hash1, 32);
 	LOG_DBG("verify hash1:" "%d", *sc->verify_hash.data);
 	LOG_DBG("verify hash1:" "%s", sc->verify_hash.data);
 
@@ -494,6 +494,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	LOG_DBG("size opt %d", sizeof(auth_policy.options));
 	memcpy(first.data, &auth_policy.options, sizeof(auth_policy.options));
 	LOG_DBG("FIRST DATA\n %s", first.data);
+	LOG_DBG("FIRST len\n %s", first.length);
 
 	//hash with sha256
 	unsigned char hash1[SHA256_DIGEST_LENGTH];
@@ -512,7 +513,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	}
 
 	//prepare verify_hash vector for posterior signing
-	memcpy(sc->verify_hash.data, hash1, 32);
+	memcpy(sc->verify_hash.data, &hash1, 32);
 	LOG_DBG("verify hash1:" "%d", *sc->verify_hash.data);
 	LOG_DBG("verify hash1:" "%s", sc->verify_hash.data);
 
