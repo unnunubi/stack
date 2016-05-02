@@ -426,7 +426,7 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 	UcharArray first(sizeof(auth_policy.options));
 	LOG_DBG("size opt %d", sizeof(auth_policy.options));
 	memcpy(first.data, &auth_policy.options, sizeof(auth_policy.options));
-	LOG_DBG("FIRST DATA\n %s", first.data);
+	LOG_DBG("FIRST DATA\n %d", first.data);
 	LOG_DBG("FIRST len\n %d", first.length);
 
 	//hash with sha256
@@ -447,7 +447,7 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 	SHA256(first.data, first.length, hash1);
 
 	//prepare verify_hash vector for posterior signing
-	memcpy(sc->verify_hash.data, hash1, 32);
+	memcpy(sc->verify_hash.data, &hash1, 32);
 	LOG_DBG("verify hash1:" "%d", *sc->verify_hash.data);
 	LOG_DBG("verify hash1:" "%s", sc->verify_hash.data);
 
@@ -499,7 +499,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 
 	//hash with sha256
 	unsigned char hash1[SHA256_DIGEST_LENGTH];
-	SHA256_CTX sha256;
+	//SHA256_CTX sha256;
 	/*if(!SHA256_Init(&sha256)){
 		LOG_ERR("Error initializing sha256");
 		return IAuthPolicySet::FAILED;
@@ -515,7 +515,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	SHA256(first.data, first.length, hash1);
 
 	//prepare verify_hash vector for posterior signing
-	memcpy(sc->verify_hash.data, hash1, 32);
+	memcpy(sc->verify_hash.data, &hash1, 32);
 	LOG_DBG("verify hash1:" "%d", *sc->verify_hash.data);
 	LOG_DBG("verify hash1:" "%s", sc->verify_hash.data);
 
@@ -558,7 +558,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 		return IAuthPolicySet::FAILED;
 	}
 
-	//hash2 to concatenate for verify message
+/*	//hash2 to concatenate for verify message
 	UcharArray second(sizeof(obj_info.value_));
 	LOG_DBG("size opt %d", sizeof(obj_info.value_));
 	memcpy(second.data, &obj_info.value_, sizeof(obj_info.value_));
@@ -580,7 +580,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+32, hash2, 32);
-	//end preparation for certificate verify message
+	//end preparation for certificate verify message*/
 
 	load_authentication_certificate(sc);
 	//convert x509
@@ -617,15 +617,15 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
 	sec_man->add_security_context(sc);
 
-	UcharArray third(sizeof(obj_info1.value_));
+/*	UcharArray third(sizeof(obj_info1.value_));
 	LOG_DBG("size opt %d", sizeof(obj_info1.value_));
 	memcpy(third.data, &obj_info.value_, sizeof(obj_info1.value_));
 	unsigned char hash3[SHA256_DIGEST_LENGTH];
-	/*SHA256_CTX sha256;
+	SHA256_CTX sha256;
 		if(!SHA256_Init(&sha256)){
 			LOG_ERR("Error initializing sha256");
 			return IAuthPolicySet::FAILED;
-		}*/
+	}
 	if(!SHA256_Update(&sha256, third.data, third.length)){
 		LOG_ERR("Error updating sha256");
 		return IAuthPolicySet::FAILED;
@@ -636,7 +636,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+64, hash3, 32);
-	//end preparation for certificate verify message
+	//end preparation for certificate verify message*/
 
 	return IAuthPolicySet::IN_PROGRESS;
 }
