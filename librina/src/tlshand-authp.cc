@@ -729,13 +729,13 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 		HMAC(EVP_sha256(),secret.data, secret.length, vec[i-1].data, vec[i-1].length, vec[i].data, (unsigned *)(&vec[i].length));
 		if(vec[i].data == NULL)LOG_ERR("Error calculating master secret");
 
-		UcharArray aux(vec[i], seed);
+		UcharArray X0(vec[i], vec[0]);
 		vres[i].length = 32;
 		vres[i].data = new unsigned char[32];
 		LOG_DBG("second hmac\n");
-		HMAC(EVP_sha256(),secret.data, secret.length, aux.data, aux.length, vres[i].data, (unsigned *)(&vres[i].length));
+		HMAC(EVP_sha256(),secret.data, secret.length, X0.data, X0.length, vres[i].data, (unsigned *)(&vres[i].length));
 
-		LOG_DBG("%d\n", i);
+		LOG_DBG("primer loop%d\n", i);
 	}
 	LOG_DBG("fin primer loop\n");
 
@@ -747,15 +747,18 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 			UcharArray concatenate(vres[i], vres[i+1]);
 			//con[i].length = concatenate.length;
 			//con[i].data = new unsigned char[concatenate.length];
-			memcpy(con.data, concatenate.data, concatenate.length);
-			LOG_DBG("segon loop%d\n",i);
+			memcpy(con.data+((i-1)*concatenate.length), concatenate.data, concatenate.length);
+			LOG_DBG("segon loop%",i);
 
 		}
 		memcpy(generated_hash.data, con.data, generated_hash.length);
 	}
 	LOG_DBG("fin segundo loop\n");
 
-
+	/*//fi calculs dos parts del master secret;
+		UcharArray aux_master_secret(res1,res2);
+		UcharArray master_secret(48);
+		memcpy(master_secret.data, aux_master_secret.data, 48);*/
 
 
 	//borrar debugs
