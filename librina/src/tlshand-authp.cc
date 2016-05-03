@@ -733,7 +733,7 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 		vres[i].length = 32;
 		vres[i].data = new unsigned char[32];
 		LOG_DBG("second hmac\n");
-		HMAC(EVP_sha256(),secret.data, secret.length, aux.data, aux.length, vec[i].data, (unsigned *)(&vec[i].length));
+		HMAC(EVP_sha256(),secret.data, secret.length, aux.data, aux.length, vres[i].data, (unsigned *)(&vres[i].length));
 
 		LOG_DBG("%d\n", i);
 	}
