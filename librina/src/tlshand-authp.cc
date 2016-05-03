@@ -1125,7 +1125,6 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 	//start computing MASTERSECRET
 	//calculate_master_secret(sc, dec_pre_master_secret);
-
 	std::string slabel = "master secret";
 	LOG_DBG("slable: %d", &slabel);
 	LOG_DBG("slable len: %d", slabel.length());
@@ -1208,12 +1207,12 @@ int AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::
 
 	//Compare calculated hash with received decrypted hash, should be the same if ok auth
 	if (dec_verify_hash != sc->verify_hash) {
-		LOG_ERR("Error authenticating server. Decrypted Hashed challenge: %s, calculated challenge: %s",
+		LOG_ERR("Error authenticating server. Decrypted Hashed cv: %s, cv: %s",
 				dec_verify_hash.toString().c_str(),
 				sc->verify_hash.toString().c_str());
 		return -1;
 	}
-	LOG_DBG("Authenticating server. Decrypted Hashed challenge: %s, calculated challenge: %s",
+	LOG_DBG("Authenticating server. Decrypted Hashed cv: %s, calculated cv: %s",
 			dec_verify_hash.toString().c_str(),
 			sc->verify_hash.toString().c_str());
 
@@ -1439,6 +1438,12 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	LOG_DBG("fi client key exchange");
 
 	//calculate_master_secret(sc, pre_master_secret);
+	std::string slabel = "master secret";
+	LOG_DBG("slable: %d", &slabel);
+	LOG_DBG("slable len: %d", slabel.length());
+	UcharArray pre_seed(sc->client_random.random_bytes, sc->server_random.random_bytes);
+	prf(sc->master_secret,pre_master_secret, slabel, pre_seed);
+
 	LOG_DBG("fi calc ms client");
 
 	return IAuthPolicySet::IN_PROGRESS;
