@@ -659,7 +659,7 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 		LOG_DBG("server process client cipher OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_client_change_cipher_spec_message(message, session_id);
 	}
-	if (message.obj_class_ == CLIENT_CHANGE_CIPHER_SPEC) {
+	if (message.obj_class_ == SERVER_CHANGE_CIPHER_SPEC) {
 		LOG_DBG("client process server cipher OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_server_change_cipher_spec_message(message, session_id);
 	}
@@ -1441,6 +1441,8 @@ int AuthTLSHandPolicySet::send_client_change_cipher_spec(TLSHandSecurityContext 
 		obj_info.class_ = CLIENT_CHANGE_CIPHER_SPEC;
 		obj_info.name_ = CLIENT_CHANGE_CIPHER_SPEC;
 		obj_info.inst_ = 0;
+		obj_info.value_.size_ = 1;
+		obj_info.value_.message_ = new unsigned char[1];
 
 		rib_daemon->remote_write(sc->con,
 				obj_info,
@@ -1503,6 +1505,8 @@ int AuthTLSHandPolicySet::send_server_change_cipher_spec(TLSHandSecurityContext 
 		obj_info.class_ = SERVER_CHANGE_CIPHER_SPEC;
 		obj_info.name_ = SERVER_CHANGE_CIPHER_SPEC;
 		obj_info.inst_ = 0;
+		obj_info.value_.size_ = 1;
+		obj_info.value_.message_ = new unsigned char[1];
 
 		rib_daemon->remote_write(sc->con,
 				obj_info,
