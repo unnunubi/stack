@@ -709,29 +709,36 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 	UcharArray seed(label, pre_seed);
 
 	//compute how many times we need to hask a(i)
-	int it = generated_hash.length/32;
+	int it = (generated_hash.length/32);
 	if (generated_hash.length%32 != 0)  it+=1;
-	std::vector<UcharArray> vec(it);
-	std::vector<UcharArray> vres(it);
+	std::vector<UcharArray> vec(it+1);
+	std::vector<UcharArray> vres(it+1);
+
+	LOG_DBG("fin de declaracion del vector\n");
 
 	vec[0].length=32;
+	vec[0].data = new unsigned char[32];
 	memcpy(vec[0].data, seed.data, 32);
+	LOG_DBG("before enter loop\n");
 
 	//compute a[i], for determined length
 	for(int i = 1; i <= it; ++i){
 		vec[i].length = 32;
 		vec[i].data = new unsigned char[32];
+		LOG_DBG("first hmac\n");
 		HMAC(EVP_sha256(),secret.data, secret.length, vec[i-1].data, vec[i-1].length, vec[i].data, (unsigned *)(&vec[i].length));
 		if(vec[i].data == NULL)LOG_ERR("Error calculating master secret");
 
 		UcharArray aux(vec[i], seed);
 		vres[i].length = 32;
 		vres[i].data = new unsigned char[32];
+		LOG_DBG("second hmac\n");
 		HMAC(EVP_sha256(),secret.data, secret.length, aux.data, aux.length, vec[i].data, (unsigned *)(&vec[i].length));
 
-
-
+		LOG_DBG("%d\n", i);
 	}
+	LOG_DBG("fin primer loop\n");
+
 	for(int i = 1; i <= it-1; ++i){
 		UcharArray concatenate(vres[i], vres[i+1]);
 		vres[0].length = concatenate.length;
@@ -739,6 +746,7 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 		memcpy(vres[0].data, concatenate.data, concatenate.length);
 
 	}
+	LOG_DBG("fin segundo loop\n");
 
 	memcpy(generated_hash.data, vres[0].data, generated_hash.length);
 
