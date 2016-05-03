@@ -739,16 +739,23 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 	}
 	LOG_DBG("fin primer loop\n");
 
-	for(int i = 1; i <= it-1; ++i){
-		UcharArray concatenate(vres[i], vres[i+1]);
-		vres[0].length = concatenate.length;
-		vres[0].data = new unsigned char[concatenate.length];
-		memcpy(vres[0].data, concatenate.data, concatenate.length);
+	UcharArray con(it*32);
+	if(it == 1) memcpy(generated_hash.data, vres[1].data, generated_hash.length);
+	//repassar!!!
+	else {
+		for(int i = 1; i <= it-1; ++i){
+			UcharArray concatenate(vres[i], vres[i+1]);
+			//con[i].length = concatenate.length;
+			//con[i].data = new unsigned char[concatenate.length];
+			memcpy(con.data, concatenate.data, concatenate.length);
+			LOG_DBG("segon loop%d\n",i);
 
+		}
+		memcpy(generated_hash.data, con.data, generated_hash.length);
 	}
 	LOG_DBG("fin segundo loop\n");
 
-	memcpy(generated_hash.data, vres[0].data, generated_hash.length);
+
 
 
 	//borrar debugs
