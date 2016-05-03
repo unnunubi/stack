@@ -114,6 +114,9 @@ public:
 	//Master secret generated in key exchange
 	UcharArray master_secret;
 
+	//finished hash, 12Bytes;
+	UcharArray finish_prf;
+
 	//hashed received/sent messages (5mess*32length);
 	UcharArray verify_hash;
 
@@ -206,7 +209,8 @@ private:
 	//FI BERTA
 
 	int load_credentials(TLSHandSecurityContext * sc);
-	int calculate_master_secret(TLSHandSecurityContext * sc, UcharArray& pre);
+	//int calculate_master_secret(TLSHandSecurityContext * sc, UcharArray& pre);
+	int prf(UcharArray& generated_hash, UcharArray& secret, const std::string& slabel, UcharArray& pre_seed);
 
 	//Load the authentication certificate required for this DIF from a file
 	int load_authentication_certificate(TLSHandSecurityContext * sc);

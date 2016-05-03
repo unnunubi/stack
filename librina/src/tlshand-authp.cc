@@ -335,6 +335,10 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 	client_keys_received = false;
 	client_cert_verify_received = false;
 	client_cipher_received = false;
+	master_secret.length = 48;
+	master_secret.data = new unsigned char[48];
+	finish_prf.length = 12;
+	finish_prf.data = new unsigned char[12];
 }
 
 TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
@@ -384,6 +388,10 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 	client_keys_received = false;
 	client_cert_verify_received = false;
 	client_cipher_received = false;
+	master_secret.length = 48;
+	master_secret.data = new unsigned char[48];
+	finish_prf.length = 12;
+	finish_prf.data = new unsigned char[12];
 
 
 	state = BEGIN;
@@ -692,7 +700,64 @@ int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext
 	return 0;
 }
 
-int AuthTLSHandPolicySet::calculate_master_secret(TLSHandSecurityContext * sc, UcharArray& pre)
+int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  const std::string& slabel, UcharArray& pre_seed)
+{
+	LOG_DBG("start prf function\n\n");
+	//convert label to UcharArray
+	UcharArray label(slabel.length());
+	memcpy(label.data, &slabel, slabel.length());
+	UcharArray seed(label, pre_seed);
+
+	//compute how many times we need to hask a(i)
+	int it = generated_hash.length/32;
+	if (generated_hash.length%32 != 0)  it+=1;
+	std::vector<UcharArray> vec(it);
+	std::vector<UcharArray> vres(it);
+
+	vec[0].length=32;
+	memcpy(vec[0].data, seed.data, 32);
+
+	//compute a[i], for determined length
+	for(int i = 1; i <= it; ++i){
+		vec[i].length = 32;
+		vec[i].data = new unsigned char[32];
+		HMAC(EVP_sha256(),secret.data, secret.length, vec[i-1].data, vec[i-1].length, vec[i].data, (unsigned *)(&vec[i].length));
+		if(vec[i].data == NULL)LOG_ERR("Error calculating master secret");
+
+		UcharArray aux(vec[i], seed);
+		vres[i].length = 32;
+		vres[i].data = new unsigned char[32];
+		HMAC(EVP_sha256(),secret.data, secret.length, aux.data, aux.length, vec[i].data, (unsigned *)(&vec[i].length));
+
+
+
+	}
+	for(int i = 1; i <= it-1; ++i){
+		UcharArray concatenate(vres[i], vres[i+1]);
+		vres[0].length = concatenate.length;
+		vres[0].data = new unsigned char[concatenate.length];
+		memcpy(vres[0].data, concatenate.data, concatenate.length);
+
+	}
+
+	memcpy(generated_hash.data, vres[0].data, generated_hash.length);
+
+
+	//borrar debugs
+	LOG_DBG("ms length : %d", generated_hash.length);
+	for (int i=0; i< generated_hash.length; i++) {
+		LOG_DBG("ms data : %d %d", i, generated_hash.data[i]);
+	}
+
+
+	LOG_DBG("fin calculate prfss");
+
+
+	return 0;
+
+}
+
+/*int AuthTLSHandPolicySet::calculate_master_secret(TLSHandSecurityContext * sc, UcharArray& pre)
 {
 	LOG_DBG("calculating ms");
 	LOG_DBG("client random: %d", sc->client_random.random_bytes.length);
@@ -761,6 +826,7 @@ int AuthTLSHandPolicySet::calculate_master_secret(TLSHandSecurityContext * sc, U
 	return 0;
 
 }
+*/
 
 int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& message,
 		int session_id)
@@ -1058,7 +1124,14 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 
 	//start computing MASTERSECRET
-	calculate_master_secret(sc, dec_pre_master_secret);
+	//calculate_master_secret(sc, dec_pre_master_secret);
+
+	std::string slabel = "master secret";
+	LOG_DBG("slable: %d", &slabel);
+	LOG_DBG("slable len: %d", slabel.length());
+	UcharArray pre_seed(sc->client_random.random_bytes, sc->server_random.random_bytes);
+	prf(sc->master_secret,dec_pre_master_secret, slabel, pre_seed);
+
 
 	LOG_DBG("return from calculate ms");
 
@@ -1365,7 +1438,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	//sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA; //canviar a un de nou o no cal???
 	LOG_DBG("fi client key exchange");
 
-	calculate_master_secret(sc, pre_master_secret);
+	//calculate_master_secret(sc, pre_master_secret);
 	LOG_DBG("fi calc ms client");
 
 	return IAuthPolicySet::IN_PROGRESS;
@@ -1432,6 +1505,10 @@ int AuthTLSHandPolicySet::send_client_certificate_verify(TLSHandSecurityContext 
 }
 int AuthTLSHandPolicySet::send_client_change_cipher_spec(TLSHandSecurityContext * sc)
 {
+	//TODO
+	/*record protocol configure send kernel
+	 *
+	 */
 	try {
 		cdap_rib::flags_t flags;
 		cdap_rib::filt_info_t filt;
@@ -1495,7 +1572,12 @@ int AuthTLSHandPolicySet::send_server_change_cipher_spec(TLSHandSecurityContext 
 		return IAuthPolicySet::FAILED;
 	}
 
-	//SEnd server change cipher spec
+	//TODO
+	/*configure send channel (record protocol)
+	 *
+	 */
+
+	//Send server change cipher spec
 	try {
 		cdap_rib::flags_t flags;
 		cdap_rib::filt_info_t filt;
