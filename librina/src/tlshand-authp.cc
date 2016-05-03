@@ -331,6 +331,10 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 	other_cert = NULL;
 	cert_received = false;
 	hello_received = false;
+	client_cert_received = false;
+	client_keys_received = false;
+	client_cert_verify_received = false;
+	client_cipher_received = false;
 }
 
 TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
@@ -376,6 +380,11 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 	other_cert = NULL;
 	cert_received = false;
 	hello_received = false;
+	client_cert_received = false;
+	client_keys_received = false;
+	client_cert_verify_received = false;
+	client_cipher_received = false;
+
 
 	state = BEGIN;
 }
@@ -387,6 +396,8 @@ const std::string AuthTLSHandPolicySet::SERVER_CERTIFICATE = "Server Certificate
 const std::string AuthTLSHandPolicySet::CLIENT_CERTIFICATE = "Client Certificate";
 const std::string AuthTLSHandPolicySet::CLIENT_KEY_EXCHANGE = "Client key exchange";
 const std::string AuthTLSHandPolicySet::CLIENT_CERTIFICATE_VERIFY = "Client certificate verify";
+const std::string AuthTLSHandPolicySet::CLIENT_CHANGE_CIPHER_SPEC = "Client change cipher spec";
+const std::string AuthTLSHandPolicySet::SERVER_CHANGE_CIPHER_SPEC = "Server change cipher spec";
 
 
 AuthTLSHandPolicySet::AuthTLSHandPolicySet(rib::RIBDaemonProxy * ribd,
@@ -644,6 +655,15 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 		LOG_DBG("client process verify OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_client_certificate_verify_message(message, session_id);
 	}
+	if (message.obj_class_ == CLIENT_CHANGE_CIPHER_SPEC) {
+		LOG_DBG("server process client cipher OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
+		return process_client_change_cipher_spec_message(message, session_id);
+	}
+	if (message.obj_class_ == CLIENT_CHANGE_CIPHER_SPEC) {
+		LOG_DBG("client process server cipher OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
+		return process_server_change_cipher_spec_message(message, session_id);
+	}
+
 
 	return rina::IAuthPolicySet::FAILED;
 }
@@ -908,6 +928,8 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 	UcharArray certificate_chain;
 	decode_client_certificate_tls_hand(message.obj_value_,certificate_chain);////canviar!!
 
+	sc->client_cert_received = true;
+
 	//preparation for certificate verify message
 	unsigned char hash4[SHA256_DIGEST_LENGTH];
 	if(!SHA256(message.obj_value_.message_, message.obj_value_.size_, hash4)){
@@ -936,6 +958,11 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 
 	LOG_DBG("end process client certificate");
 
+	//when client message received send server change cipher spec
+	if(sc->client_keys_received and sc->client_cert_verify_received and sc->client_cipher_received){
+		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
+		return send_server_change_cipher_spec(sc);
+	}
 	return IAuthPolicySet::IN_PROGRESS;
 
 }
@@ -973,6 +1000,7 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 	UcharArray enc_pre_master_secret;
 	decode_client_key_exchange_tls_hand(message.obj_value_, enc_pre_master_secret);
+	sc->client_keys_received = true;
 
 	//preparation for certificate verify message
 	unsigned char hash5[SHA256_DIGEST_LENGTH];
@@ -1034,6 +1062,11 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 	LOG_DBG("return from calculate ms");
 
+	if(sc->client_cert_received and sc->client_cert_verify_received and sc->client_cipher_received){
+		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
+		return send_server_change_cipher_spec(sc);
+	}
+
 	return IAuthPolicySet::IN_PROGRESS;
 
 }
@@ -1072,6 +1105,7 @@ int AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::
 
 	UcharArray enc_verify_hash;	//Quin size ha de tenir? :/
 	decode_client_certificate_verify_tls_hand(message.obj_value_, enc_verify_hash);
+	sc->client_cert_verify_received = true;
 
 	UcharArray dec_verify_hash;
 	EVP_PKEY *pubkey = NULL;
@@ -1111,8 +1145,77 @@ int AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::
 			sc->verify_hash.toString().c_str());
 
 	LOG_DBG("fi process client verify");
+
+	if(sc->client_keys_received and sc->client_cert_received and sc->client_cipher_received){
+		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
+		return send_server_change_cipher_spec(sc);
+	}
+
 	return IAuthPolicySet::IN_PROGRESS;
 }
+
+int AuthTLSHandPolicySet::process_client_change_cipher_spec_message(const cdap::CDAPMessage& message,
+		int session_id)
+{
+	TLSHandSecurityContext * sc;
+	sc = dynamic_cast<TLSHandSecurityContext *>(sec_man->get_security_context(session_id));
+	if (!sc) {
+		LOG_ERR("Could not retrieve Security Context for session: %d", session_id);
+		return IAuthPolicySet::FAILED;
+	}
+
+	ScopedLock sc_lock(lock);
+
+	if (sc->state != TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS) {
+		LOG_ERR("Wrong session state: %d", sc->state);
+		sec_man->remove_security_context(session_id);
+		delete sc;
+		return IAuthPolicySet::FAILED;
+	}
+
+	//TODO
+	/*Server has received client change cipher spec,
+	 * it needs to configure receive before sending its cipher
+	 */
+
+	sc->client_cipher_received = true;
+	if(sc->client_keys_received and sc->client_cert_received and sc->client_cert_verify_received){
+		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
+		return send_server_change_cipher_spec(sc);
+	}
+	return IAuthPolicySet::IN_PROGRESS;
+}
+
+int AuthTLSHandPolicySet::process_server_change_cipher_spec_message(const cdap::CDAPMessage& message,
+		int session_id)
+{
+	TLSHandSecurityContext * sc;
+	sc = dynamic_cast<TLSHandSecurityContext *>(sec_man->get_security_context(session_id));
+	if (!sc) {
+		LOG_ERR("Could not retrieve Security Context for session: %d", session_id);
+		return IAuthPolicySet::FAILED;
+	}
+	ScopedLock sc_lock(lock);
+
+	if (sc->state != TLSHandSecurityContext::WAIT_SERVER_CIPHER) {
+		LOG_ERR("Wrong session state: %d", sc->state);
+		sec_man->remove_security_context(session_id);
+		delete sc;
+		return IAuthPolicySet::FAILED;
+	}
+
+	//TODO
+	/*Client needs to configure receive (kernel) before sending its cipher
+	 * join with record module
+	 */
+
+
+	sc->state = TLSHandSecurityContext::WAIT_SERVER_FINISH;
+	return send_client_finish(sc);
+}
+
+
+
 
 
 int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
@@ -1327,6 +1430,30 @@ int AuthTLSHandPolicySet::send_client_certificate_verify(TLSHandSecurityContext 
 	return 0;
 
 }
+int AuthTLSHandPolicySet::send_client_change_cipher_spec(TLSHandSecurityContext * sc)
+{
+	try {
+		cdap_rib::flags_t flags;
+		cdap_rib::filt_info_t filt;
+		cdap_rib::obj_info_t obj_info;
+		cdap::StringEncoder encoder;
+
+		obj_info.class_ = CLIENT_CHANGE_CIPHER_SPEC;
+		obj_info.name_ = CLIENT_CHANGE_CIPHER_SPEC;
+		obj_info.inst_ = 0;
+
+		rib_daemon->remote_write(sc->con,
+				obj_info,
+				flags,
+				filt,
+				NULL);
+	} catch (Exception &e) {
+		LOG_ERR("Problems encoding and sending CDAP message: %s",e.what());
+		sec_man->destroy_security_context(sc->id);
+		return IAuthPolicySet::FAILED;
+	}
+	return 0;
+}
 
 int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 {
@@ -1350,6 +1477,50 @@ int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 	send_client_certificate_verify(sc);
 	LOG_DBG("after calling send client certificate verify");
 
+	send_client_change_cipher_spec(sc);
+
+	sc->state = TLSHandSecurityContext::WAIT_SERVER_CIPHER;
+
+	return IAuthPolicySet::IN_PROGRESS;
+}
+
+int AuthTLSHandPolicySet::send_server_change_cipher_spec(TLSHandSecurityContext * sc)
+{
+	//rebre i actualitzar el record de rebre a d'anar al kernel i etc
+	if (sc->state != TLSHandSecurityContext::SERVER_SENDING_CIPHER) {
+		LOG_ERR("Wrong state of policy");
+		sec_man->destroy_security_context(sc->id);
+		return IAuthPolicySet::FAILED;
+	}
+
+	//SEnd server change cipher spec
+	try {
+		cdap_rib::flags_t flags;
+		cdap_rib::filt_info_t filt;
+		cdap_rib::obj_info_t obj_info;
+		cdap::StringEncoder encoder;
+
+		obj_info.class_ = SERVER_CHANGE_CIPHER_SPEC;
+		obj_info.name_ = SERVER_CHANGE_CIPHER_SPEC;
+		obj_info.inst_ = 0;
+
+		rib_daemon->remote_write(sc->con,
+				obj_info,
+				flags,
+				filt,
+				NULL);
+	} catch (Exception &e) {
+		LOG_ERR("Problems encoding and sending CDAP message: %s",e.what());
+		sec_man->destroy_security_context(sc->id);
+		return IAuthPolicySet::FAILED;
+	}
+	return 0;
+}
+
+int AuthTLSHandPolicySet::send_client_finish(TLSHandSecurityContext * sc)
+{
+
+	sc->state = TLSHandSecurityContext::WAIT_SERVER_FINISH;
 	return IAuthPolicySet::IN_PROGRESS;
 }
 

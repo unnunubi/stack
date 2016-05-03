@@ -86,6 +86,9 @@ public:
                 WAIT_SERVER_HELLO_and_CERTIFICATE,
 		WAIT_CLIENT_CERTIFICATE_and_KEYS,
 		CLIENT_SENDING_DATA,
+		SERVER_SENDING_CIPHER,
+		WAIT_SERVER_CIPHER,
+		WAIT_SERVER_FINISH,
 		//WAIT_SERVER_CERTIFICATE,
                 DONE
         };
@@ -120,6 +123,12 @@ public:
 	bool cert_received;
 	bool hello_received;
 
+	//Presence of received client messages
+	bool client_cert_received;
+	bool client_keys_received;
+	bool client_cert_verify_received;
+	bool client_cipher_received;
+
 
 	/// Encryption policy configuration
 	PolicyConfig encrypt_policy_config;
@@ -152,6 +161,8 @@ public:
 	static const std::string CLIENT_CERTIFICATE;
 	static const std::string CLIENT_KEY_EXCHANGE;
 	static const std::string CLIENT_CERTIFICATE_VERIFY;
+	static const std::string CLIENT_CHANGE_CIPHER_SPEC;
+	static const std::string SERVER_CHANGE_CIPHER_SPEC;
 
 	AuthTLSHandPolicySet(rib::RIBDaemonProxy * ribd,
 			     ISecurityManager * sm);
@@ -181,10 +192,17 @@ private:
 								 int session_id);
 	int process_client_certificate_verify_message(const cdap::CDAPMessage& message,
 									 int session_id);
+	int process_client_change_cipher_spec_message(const cdap::CDAPMessage& message,
+			int session_id);
+	int process_server_change_cipher_spec_message (const cdap::CDAPMessage& message,
+			int session_id);
 	int send_client_messages(TLSHandSecurityContext * sc);
 	int send_client_certificate(TLSHandSecurityContext * sc);
 	int send_client_key_exchange(TLSHandSecurityContext * sc);
 	int send_client_certificate_verify(TLSHandSecurityContext * sc);
+	int send_client_change_cipher_spec(TLSHandSecurityContext * sc);
+	int send_server_change_cipher_spec(TLSHandSecurityContext * sc);
+	int send_client_finish(TLSHandSecurityContext * sc);
 	//FI BERTA
 
 	int load_credentials(TLSHandSecurityContext * sc);
