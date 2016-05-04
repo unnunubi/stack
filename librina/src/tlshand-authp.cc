@@ -705,7 +705,7 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 	LOG_DBG("start prf function\n\n");
 	//convert label to UcharArray
 	UcharArray label(slabel.length());
-	memcpy(label.data, &slabel, slabel.length());
+	memcpy(label.data, slabel.c_str(), slabel.length());
 
 	LOG_DBG("ucgar label data %s", label.data);
 
