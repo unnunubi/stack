@@ -147,7 +147,7 @@ void decode_server_hello_tls_hand(const ser_obj_t &message,
 }
 
 
-//Server certificate
+//Certificates
 void encode_certificate_tls_hand(const UcharArray& certificate_chain,
 		ser_obj_t& result)
 {
@@ -558,7 +558,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 		return IAuthPolicySet::FAILED;
 	}
 
-	//Get auth policy options to obtain second hash message [0,--31]
+	//Get onj.info_value to obtain second hash message [32,--64]
 	unsigned char hash2[SHA256_DIGEST_LENGTH];
 	if(!SHA256(obj_info.value_.message_, obj_info.value_.size_, hash2)){
 		LOG_ERR("Could not hash message");
@@ -602,7 +602,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
 	sec_man->add_security_context(sc);
 
-	//Get auth policy options to obtain third hash message [0,--31]
+	//Get obj.info_value to obtain third hash message [64,--96]
 	unsigned char hash3[SHA256_DIGEST_LENGTH];
 	if(!SHA256(obj_info1.value_.message_, obj_info1.value_.size_, hash3)){
 		LOG_ERR("Could not hash message");
@@ -650,7 +650,6 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 		return process_server_finish_message(message, session_id);
 	}
 
-
 	return rina::IAuthPolicySet::FAILED;
 }
 
@@ -673,7 +672,7 @@ int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext
 		return -1;
 
 	}
-	return 0;
+	return rina::IAuthPolicySet::IN_PROGRESS;
 }
 
 int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  const std::string& slabel, UcharArray& pre_seed)
@@ -710,7 +709,7 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 	}
 	UcharArray con(it*32);
 	if(it == 1) memcpy(generated_hash.data, vres[1].data, generated_hash.length);
-	//repassar!!!
+	//Concatenate and get desired length
 	else {
 		for(int i = 1; i <= it-1; ++i){
 			UcharArray concatenate(vres[i], vres[i+1]);
@@ -748,11 +747,6 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 		delete sc;
 		return IAuthPolicySet::FAILED;
 	}
-
-	//TIMER????
-	/*sc->timer_task = new CancelAuthTimerTask(sec_man, session_id);
-	timer.scheduleTask(sc->timer_task, timeout);*/
-
 	sc->hello_received = true;
 
 	decode_server_hello_tls_hand(message.obj_value_,
@@ -761,7 +755,7 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 			sc->compress_method,
 			sc->version);
 
-	//Get auth policy options to obtain third hash message [0,--31]
+	//Get obj.info_value options to obtain third hash message [0,--31]
 	unsigned char hash2[SHA256_DIGEST_LENGTH];
 	if(!SHA256(message.obj_value_.message_, message.obj_value_.size_, hash2)){
 		LOG_ERR("Could not hash message");
@@ -771,7 +765,7 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 	memcpy(sc->verify_hash.data+32, hash2, 32);
 
 
-	//if ha rebut server certificate-< canvi estat , enviar misatges client
+	//if certificate received change state
 	if(sc->cert_received) {
 		sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA;
 		return send_client_messages(sc);
@@ -804,11 +798,6 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 		delete sc;
 		return IAuthPolicySet::FAILED;
 	}
-
-	//TIMER????
-	/*sc->timer_task = new CancelAuthTimerTask(sec_man, session_id);
-	timer.scheduleTask(sc->timer_task, timeout);*/
-
 	sc->cert_received = true;
 
 	UcharArray certificate_chain;
@@ -823,19 +812,18 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+64, hash3, 32);
 
-	//transformar cert a x509 i guardar al context
 	const unsigned char *aux;
 	aux =  reinterpret_cast<const unsigned char*>(certificate_chain.data);
 	const unsigned char** pointer;
 	pointer = &aux;
 
+	//get certificate in x509 format
 	if(pointer ==NULL)
 		LOG_ERR("Bad pointer :(");
 	sc->other_cert = d2i_X509(NULL, pointer, certificate_chain.length);
 	if(sc->other_cert  == NULL)
 		LOG_ERR("Bad conversion to x509 :(");
 
-	//if ha rebut server certificate-< canvi estat , enviar misatges client
 	if(sc->hello_received) {
 		sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA;
 		return send_client_messages(sc);
@@ -867,13 +855,8 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 		delete sc;
 		return IAuthPolicySet::FAILED;
 	}
-
-	//TIMER????
-	/*sc->timer_task = new CancelAuthTimerTask(sec_man, session_id);
-		timer.scheduleTask(sc->timer_task, timeout);*/
-
 	UcharArray certificate_chain;
-	decode_certificate_tls_hand(message.obj_value_,certificate_chain);////canviar!!
+	decode_certificate_tls_hand(message.obj_value_,certificate_chain);
 
 	sc->client_cert_received = true;
 
@@ -886,7 +869,7 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+96, hash4, 32);
 
-	//transformar cert a x509 i guardar al context
+	//Transform certificate to x509 format and store it
 	const unsigned char *aux;
 	aux =  reinterpret_cast<const unsigned char*>(certificate_chain.data);
 	const unsigned char** pointer;
@@ -898,7 +881,6 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 	if(sc->other_cert  == NULL)
 		LOG_ERR("Bad conversion to x509 :(");
 
-	//when client message received send server change cipher spec
 	if(sc->client_keys_received and sc->client_cert_verify_received and sc->client_cipher_received){
 		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
 		return send_server_change_cipher_spec(sc);
@@ -930,11 +912,6 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 		delete sc;
 		return IAuthPolicySet::FAILED;
 	}
-
-	//TIMER????
-	/*sc->timer_task = new CancelAuthTimerTask(sec_man, session_id);
-		timer.scheduleTask(sc->timer_task, timeout);*/
-
 
 	UcharArray enc_pre_master_secret;
 	decode_client_key_exchange_tls_hand(message.obj_value_, enc_pre_master_secret);
@@ -984,10 +961,9 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 		ERR_error_string(ERR_get_error(), NULL);
 	}
 
-	//EVP_PKEY_free(privkey); //necesrai?
+	//EVP_PKEY_free(privkey); //do we need it?
 
 	//start computing MASTERSECRET
-	//calculate_master_secret(sc, dec_pre_master_secret);
 	std::string slabel = "master secret";
 	UcharArray pre_seed(sc->client_random.random_bytes, sc->server_random.random_bytes);
 	prf(sc->master_secret,dec_pre_master_secret, slabel, pre_seed);
@@ -996,9 +972,7 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
 		return send_server_change_cipher_spec(sc);
 	}
-
 	return IAuthPolicySet::IN_PROGRESS;
-
 }
 
 int AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::CDAPMessage& message,
@@ -1026,12 +1000,7 @@ int AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::
 		return IAuthPolicySet::FAILED;
 	}
 
-	//TIMER????
-	/*sc->timer_task = new CancelAuthTimerTask(sec_man, session_id);
-		timer.scheduleTask(sc->timer_task, timeout);*/
-
-
-	UcharArray enc_verify_hash;	//Quin size ha de tenir? :/
+	UcharArray enc_verify_hash;
 	decode_client_certificate_verify_tls_hand(message.obj_value_, enc_verify_hash);
 	sc->client_cert_verify_received = true;
 
@@ -1066,7 +1035,7 @@ int AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::
 		LOG_ERR("Error authenticating server. Decrypted Hashed cv: %s, cv: %s",
 				dec_verify_hash.toString().c_str(),
 				sc->verify_hash.toString().c_str());
-		return -1;
+		return IAuthPolicySet::FAILED;
 	}
 
 	if(sc->client_keys_received and sc->client_cert_received and sc->client_cipher_received){
@@ -1232,8 +1201,6 @@ int AuthTLSHandPolicySet::process_server_finish_message(const cdap::CDAPMessage&
 		delete sc;
 		return IAuthPolicySet::FAILED;
 	}
-
-
 	UcharArray dec_server_finish;
 	decode_finsih_message_tls_hand(message.obj_value_, dec_server_finish);
 
@@ -1291,15 +1258,11 @@ int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+96, hash4, 32);
-
-	//sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA; //canviar a un de nou o no cal???
 	return IAuthPolicySet::IN_PROGRESS;
 
 }
 int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 {
-
-	//generar 48bytes rand, extreure pubkey, rsa_encrypt i enviar!
 
 	UcharArray pre_master_secret, enc_pre_master_secret;
 	pre_master_secret.data = new unsigned char[48];
@@ -1311,9 +1274,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	if(RAND_bytes(pre_master_secret.data, pre_master_secret.length) != 1)
 		LOG_ERR("Problems generating random bytes");
 
-	if(sc->other_cert == NULL)LOG_ERR("other cert mal guardat"); //aquesta comprovacio no cal, nomes es prova
-
-	//extreurepubkey
+	//Exctract public key
 	if ((pubkey = X509_get_pubkey(sc->other_cert)) == NULL)
 		LOG_ERR("Error getting public key from certificate %s",
 				ERR_error_string(ERR_get_error(), NULL));
@@ -1333,7 +1294,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 								RSA_PKCS1_OAEP_PADDING)) == -1){
 		LOG_ERR("Error encrypting pre-master secret");
 		LOG_ERR("Error encrypting challenge with RSA public key: %s", ERR_error_string(ERR_get_error(), NULL));
-		//return -1;
+		return IAuthPolicySet::FAILED;
 	}
 
 
@@ -1375,9 +1336,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+128, hash5, 32);
 
-	//sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA; //canviar a un de nou o no cal???
-
-	//calculate_master_secret(sc, pre_master_secret);
+	//calculate_master_secret
 	std::string slabel = "master secret";
 	UcharArray pre_seed(sc->client_random.random_bytes, sc->server_random.random_bytes);
 	prf(sc->master_secret,pre_master_secret, slabel, pre_seed);
@@ -1404,7 +1363,7 @@ int AuthTLSHandPolicySet::send_client_certificate_verify(TLSHandSecurityContext 
 		return -1;
 	}
 
-	//encrypt the hash of all mesages with private rsa key IPCP A
+	//encrypt the hash of all mesages with private rsa key of IPCP A
 	UcharArray enc_cert_verify(256);
 	if((enc_cert_verify.length = RSA_private_encrypt(sc->verify_hash.length,
 							sc->verify_hash.data,
@@ -1440,7 +1399,7 @@ int AuthTLSHandPolicySet::send_client_certificate_verify(TLSHandSecurityContext 
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
-	return 0;
+	return IAuthPolicySet::IN_PROGRESS;
 
 }
 int AuthTLSHandPolicySet::send_client_change_cipher_spec(TLSHandSecurityContext * sc)
@@ -1476,16 +1435,14 @@ int AuthTLSHandPolicySet::send_client_change_cipher_spec(TLSHandSecurityContext 
 
 int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 {
-	//canviar estat, a wait el que sigui i fer tres funcions que cfacin dels tres misatges corresponents
+
 	if (sc->state != TLSHandSecurityContext::CLIENT_SENDING_DATA) {
 		LOG_ERR("Wrong session state: %d", sc->state);
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
 
-	//Send first message corresponding to the client_certificate
 	send_client_certificate(sc);
-	//Send second message corresponding to client_key_exchange
 	send_client_key_exchange(sc);
 	send_client_certificate_verify(sc);
 	send_client_change_cipher_spec(sc);
@@ -1496,8 +1453,6 @@ int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 
 int AuthTLSHandPolicySet::send_server_change_cipher_spec(TLSHandSecurityContext * sc)
 {
-	//rebre i actualitzar el record de rebre a d'anar al kernel i etc
-
 	if (sc->state != TLSHandSecurityContext::SERVER_SENDING_CIPHER) {
 		LOG_ERR("Wrong session state: %d", sc->state);
 		sec_man->destroy_security_context(sc->id);
