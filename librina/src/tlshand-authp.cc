@@ -706,7 +706,7 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 	//convert label to UcharArray
 	UcharArray label(slabel.length());
 	memcpy(label.data, &slabel, slabel.length());
-	UcharArray seed(label, pre_seed);
+
 	LOG_DBG("ucgar label data %s", label.data);
 
 	//PROVES
@@ -721,11 +721,14 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 	//compute how many times we need to hask a(i)
 	int it = (generated_hash.length/32);
 	if (generated_hash.length%32 != 0)  it+=1;
+
 	std::vector<UcharArray> vec(it+1);
 	std::vector<UcharArray> vres(it+1);
 
 	LOG_DBG("fin de declaracion del vector\n");
 
+	UcharArray seed(label, pre_seed);
+	LOG_DBG("seed data  %d", seed.data);
 	vec[0].length=32;
 	vec[0].data = new unsigned char[32];
 	memcpy(vec[0].data, seed.data, 32);
@@ -733,12 +736,15 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 
 	//compute a[i], for determined length
 	for(int i = 1; i <= it; ++i){
+		LOG_DBG("i primer bucle  %d", i);
 		vec[i].length = 32;
 		vec[i].data = new unsigned char[32];
 		LOG_DBG("first hmac\n");
+		LOG_DBG("secret data  %s", secret.data);
 		HMAC(EVP_sha256(),secret.data, secret.length, vec[i-1].data, vec[i-1].length, vec[i].data, (unsigned *)(&vec[i].length));
 		if(vec[i].data == NULL)LOG_ERR("Error calculating master secret");
-		LOG_DBG("aX : %d", vec[i].data);
+		LOG_DBG("aX : %d", *vec[i].data);
+		LOG_DBG("aX : %s", vec[i].data);
 		LOG_DBG("aX length : %d", vec[i].length);
 
 		UcharArray X0(vec[i], vec[0]);
@@ -746,7 +752,8 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 		vres[i].data = new unsigned char[32];
 		LOG_DBG("second hmac\n");
 		HMAC(EVP_sha256(),secret.data, secret.length, X0.data, X0.length, vres[i].data, (unsigned *)(&vres[i].length));
-		LOG_DBG("res : %d", vres[i].data);
+		LOG_DBG("res : %d", *vres[i].data);
+		LOG_DBG("res : %s", vres[i].data);
 		LOG_DBG("res length : %d", vres[i].length);
 
 		LOG_DBG("primer loop%d\n", i);
