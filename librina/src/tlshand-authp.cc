@@ -707,6 +707,8 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 	UcharArray label(slabel.length());
 	memcpy(label.data, &slabel, slabel.length());
 	UcharArray seed(label, pre_seed);
+	LOG_DBG("ucgar label data %d", *label.data);
+
 
 	//compute how many times we need to hask a(i)
 	int it = (generated_hash.length/32);
@@ -728,12 +730,16 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 		LOG_DBG("first hmac\n");
 		HMAC(EVP_sha256(),secret.data, secret.length, vec[i-1].data, vec[i-1].length, vec[i].data, (unsigned *)(&vec[i].length));
 		if(vec[i].data == NULL)LOG_ERR("Error calculating master secret");
+		LOG_DBG("aX : %d", vec[i].data);
+		LOG_DBG("aX length : %d", vec[i].length);
 
 		UcharArray X0(vec[i], vec[0]);
 		vres[i].length = 32;
 		vres[i].data = new unsigned char[32];
 		LOG_DBG("second hmac\n");
 		HMAC(EVP_sha256(),secret.data, secret.length, X0.data, X0.length, vres[i].data, (unsigned *)(&vres[i].length));
+		LOG_DBG("res : %d", vres[i].data);
+		LOG_DBG("res length : %d", vres[i].length);
 
 		LOG_DBG("primer loop%d\n", i);
 	}
