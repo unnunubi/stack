@@ -710,9 +710,9 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 	LOG_DBG("ucgar label data %s", label.data);
 
 	//PROVES
-	unsigned char aux[14] = "master secret";
+/*	unsigned char aux[14] = "master secret";
 
-	memcpy(label.data, aux, label.length);
+	memcpy(label.data, aux, label.length);*/
 	LOG_DBG("prova label  %s", label.data);
 	LOG_DBG("prova label  %d", &label.data);
 
