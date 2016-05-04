@@ -271,8 +271,6 @@ const std::string TLSHandSecurityContext::CIPHER_SUITE = "cipherSuite";
 const std::string TLSHandSecurityContext::COMPRESSION_METHOD = "compressionMethod";
 const std::string TLSHandSecurityContext::KEYSTORE_PATH = "keystore";
 const std::string TLSHandSecurityContext::KEYSTORE_PASSWORD = "keystorePass";
-
-//Berta
 const std::string TLSHandSecurityContext::CERTIFICATE_PATH = "myCredentials";
 const std::string TLSHandSecurityContext::MY_CERTIFICATE = "certificate.pem";
 const std::string TLSHandSecurityContext::PRIV_KEY_PATH = "myPrivKey";
@@ -313,7 +311,6 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 	encrypt_policy_config = profile.encryptPolicy;
 	con.port_id = session_id;
 
-	//BERTA
 	certificate_path = profile.authPolicy.get_param_value_as_string(CERTIFICATE_PATH);
 	priv_key_path = profile.authPolicy.get_param_value_as_string(PRIV_KEY_PATH);
 
@@ -359,7 +356,6 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 
 	client_random = options->random;
 
-	//BERTA
 	certificate_path = profile.authPolicy.get_param_value_as_string(CERTIFICATE_PATH);
 	priv_key_path = profile.authPolicy.get_param_value_as_string(PRIV_KEY_PATH);
 
@@ -476,10 +472,6 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data, hash1, 32);
-	LOG_DBG("verify hash1:" "%d", *sc->verify_hash.data);
-	LOG_DBG("verify hash1:" "%s", sc->verify_hash.data);
-	//end certificate verify hash
-
 
 	return auth_policy;
 }
@@ -528,10 +520,6 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data, hash1, 32);
-	LOG_DBG("verify hash1:" "%d", *sc->verify_hash.data);
-	LOG_DBG("verify hash1:" "%s", sc->verify_hash.data);
-	//end certificate verify hash
-
 
 	//Generate server random
 	sc->server_random.utc_unix_time = (unsigned int) time(NULL);
@@ -573,15 +561,11 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	//Get auth policy options to obtain second hash message [0,--31]
 	unsigned char hash2[SHA256_DIGEST_LENGTH];
 	if(!SHA256(obj_info.value_.message_, obj_info.value_.size_, hash2)){
-		LOG_DBG("Could not hash message");
+		LOG_ERR("Could not hash message");
 		return IAuthPolicySet::FAILED;
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+32, hash2, 32);
-	LOG_DBG("verify hash2:" "%d", *sc->verify_hash.data);
-	LOG_DBG("verify hash2:" "%s", sc->verify_hash.data);
-	//end certificate verify hash
-
 
 	load_authentication_certificate(sc);
 	//convert x509
@@ -621,14 +605,11 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	//Get auth policy options to obtain third hash message [0,--31]
 	unsigned char hash3[SHA256_DIGEST_LENGTH];
 	if(!SHA256(obj_info1.value_.message_, obj_info1.value_.size_, hash3)){
-		LOG_DBG("Could not hash message");
+		LOG_ERR("Could not hash message");
 		return IAuthPolicySet::FAILED;
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+64, hash3, 32);
-	LOG_DBG("verify hash3:" "%d", *sc->verify_hash.data);
-	LOG_DBG("verify hash3:" "%s", sc->verify_hash.data);
-	//end certificate verify hash
 
 	return IAuthPolicySet::IN_PROGRESS;
 }
@@ -648,31 +629,24 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 		return process_server_certificate_message(message, session_id);
 	}
 	if (message.obj_class_ == CLIENT_CERTIFICATE) {
-		LOG_DBG("client CERTIFICATE oj¡bjecte class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_client_certificate_message(message, session_id);
 	}
 	if (message.obj_class_ == CLIENT_KEY_EXCHANGE) {
-		LOG_DBG("client key_echange OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_client_key_exchange_message(message, session_id);
 	}
 	if (message.obj_class_ == CLIENT_CERTIFICATE_VERIFY) {
-		LOG_DBG("client process verify OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_client_certificate_verify_message(message, session_id);
 	}
 	if (message.obj_class_ == CLIENT_CHANGE_CIPHER_SPEC) {
-		LOG_DBG("server process client cipher OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_client_change_cipher_spec_message(message, session_id);
 	}
 	if (message.obj_class_ == SERVER_CHANGE_CIPHER_SPEC) {
-		LOG_DBG("client process server cipher OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_server_change_cipher_spec_message(message, session_id);
 	}
 	if (message.obj_class_ == CLIENT_FINISH) {
-		LOG_DBG("client process server cipher OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_client_finish_message(message, session_id);
 	}
 	if (message.obj_class_ == SERVER_FINISH) {
-		LOG_DBG("client process server cipher OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_server_finish_message(message, session_id);
 	}
 
@@ -683,7 +657,6 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext * sc)
 {
 	BIO * certstore;
-	LOG_DBG("Start loading certificate");
 	std::stringstream ss;
 
 	ss << sc->certificate_path.c_str() << "/" << TLSHandSecurityContext::MY_CERTIFICATE;
@@ -700,7 +673,6 @@ int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext
 		return -1;
 
 	}
-	LOG_DBG("end load certificate");
 	return 0;
 }
 
@@ -719,7 +691,6 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 
 	//calculate seed, v(0) = seed;
 	UcharArray seed(label, pre_seed);
-	LOG_DBG("seed data  %d", seed.data);
 	vec[0].length=seed.length;
 	vec[0].data = new unsigned char[seed.length];
 	memcpy(vec[0].data, seed.data, seed.length);
@@ -734,7 +705,6 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 		UcharArray X0(vec[i], vec[0]);
 		vres[i].length = 32;
 		vres[i].data = new unsigned char[32];
-		LOG_DBG("second hmac\n");
 		HMAC(EVP_sha256(),secret.data, secret.length, X0.data, X0.length, vres[i].data, (unsigned *)(&vres[i].length));
 		if(vres[i].data == NULL)LOG_ERR("Error calculating master secret");
 	}
@@ -750,91 +720,13 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 		}
 		memcpy(generated_hash.data, con.data, generated_hash.length);
 	}
-	//borrar debugs
-	LOG_DBG("ms length : %d", generated_hash.length);
-	for (int i=0; i< generated_hash.length; i++) {
-		LOG_DBG("ms data : %d %d", i, generated_hash.data[i]);
-	}
-	LOG_DBG("fi prf");
-	return 1;
+	return IAuthPolicySet::IN_PROGRESS;
 
 }
-
-/*int AuthTLSHandPolicySet::calculate_master_secret(TLSHandSecurityContext * sc, UcharArray& pre)
-{
-	LOG_DBG("calculating ms");
-	LOG_DBG("client random: %d", sc->client_random.random_bytes.length);
-	LOG_DBG("server random: %d", sc->server_random.random_bytes.length);
-
-	unsigned char aux[14] = "master secret";
-	LOG_DBG("aux: %d", aux);
-
-	UcharArray ms;
-	ms.length = 14;
-	ms.data = new unsigned char[14];
-
-	memcpy(ms.data, aux, ms.length);
-	LOG_DBG("ms  %s", ms.data);
-	LOG_DBG("ms  %d", &ms.data);
-
-
-//calcul a0, a1, i a2
-	UcharArray seed(ms, sc->client_random.random_bytes, sc->server_random.random_bytes);
-	LOG_DBG("seed : %d", seed.length);
-
-	UcharArray a0(32);
-	memcpy(a0.data, seed.data, 32);
-	LOG_DBG("a0.data: %s", a0.data);
-
-	UcharArray a1(32);
-	HMAC(EVP_sha256(),pre.data, pre.length, a0.data, a0.length, a1.data, (unsigned *)(&a1.length));
-	if(a1.data == NULL)LOG_ERR("Error calculating master secret");
-	LOG_DBG("a1 : %d", a1.data);
-	LOG_DBG("a1 length : %d", a1.length);
-
-	UcharArray a2(32);
-	HMAC(EVP_sha256(),pre.data, pre.length, a1.data, a1.length, a2.data, (unsigned *)(&a2.length));
-	if(a2.data == NULL)LOG_ERR("Error calculating master secret");
-	LOG_DBG("a2 : %d", a2.data);
-	LOG_DBG("a2 length : %d", a2.length);
-
-//calcul 2 hmac finals de concatenacio
-	UcharArray a10(a1,a0);
-	UcharArray res1(32);
-	HMAC(EVP_sha256(),pre.data, pre.length, a10.data, a10.length, res1.data, (unsigned *)(&res1.length));
-	if(res1.data == NULL)LOG_ERR("Error calculating master secret");
-	LOG_DBG("res1 : %d", res1.data);
-	LOG_DBG("res1 length : %d", res1.length);
-
-	UcharArray a20(a2,a0);
-	UcharArray res2(32);
-	HMAC(EVP_sha256(),pre.data, pre.length, a20.data, a20.length, res2.data, (unsigned *)(&res2.length));
-	if(res2.data == NULL)LOG_ERR("Error calculating master secret");
-	LOG_DBG("res2 : %d", res2.data);
-	LOG_DBG("res2 length : %d", res2.length);
-
-//fi calculs dos parts del master secret;
-	UcharArray aux_master_secret(res1,res2);
-	UcharArray master_secret(48);
-	memcpy(master_secret.data, aux_master_secret.data, 48);
-//borrar debugs
-	LOG_DBG("ms length : %d", master_secret.length);
-	for (int i=0; i< master_secret.length; i++) {
-		LOG_DBG("ms data : %d %d", i, master_secret.data[i]);
-	}
-
-	sc->master_secret = master_secret;
-	LOG_DBG("fin calculate");
-
-	return 0;
-
-}
-*/
 
 int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
-	LOG_DBG("entro a process server hello");
 	TLSHandSecurityContext * sc;
 
 	if (message.obj_value_.message_ == 0) {
@@ -872,32 +764,25 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 	//Get auth policy options to obtain third hash message [0,--31]
 	unsigned char hash2[SHA256_DIGEST_LENGTH];
 	if(!SHA256(message.obj_value_.message_, message.obj_value_.size_, hash2)){
-		LOG_DBG("Could not hash message");
+		LOG_ERR("Could not hash message");
 		return IAuthPolicySet::FAILED;
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+32, hash2, 32);
-	LOG_DBG("verify hash2:" "%d", *sc->verify_hash.data);
-	LOG_DBG("verify hash2:" "%s", sc->verify_hash.data);
-	//end certificate verify hash
+
 
 	//if ha rebut server certificate-< canvi estat , enviar misatges client
 	if(sc->cert_received) {
 		sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA;
-		LOG_DBG("if process server hello");
 		return send_client_messages(sc);
 
 	}
-	LOG_DBG("end process server hello");
-
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
 int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
-	LOG_DBG("entro a process server certificate");
-
 	TLSHandSecurityContext * sc;
 
 	if (message.obj_value_.message_ == 0) {
@@ -932,14 +817,11 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 	//hash3 to concatenate for verify message
 	unsigned char hash3[SHA256_DIGEST_LENGTH];
 	if(!SHA256(message.obj_value_.message_, message.obj_value_.size_, hash3)){
-		LOG_DBG("Could not hash message");
+		LOG_ERR("Could not hash message");
 		return IAuthPolicySet::FAILED;
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+64, hash3, 32);
-	LOG_DBG("verify hash3:" "%d", *sc->verify_hash.data);
-	LOG_DBG("verify hash3:" "%s", sc->verify_hash.data);
-	//end certificate verify hash
 
 	//transformar cert a x509 i guardar al context
 	const unsigned char *aux;
@@ -956,18 +838,14 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 	//if ha rebut server certificate-< canvi estat , enviar misatges client
 	if(sc->hello_received) {
 		sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA;
-		LOG_DBG("if process server certificate");
 		return send_client_messages(sc);
 	}
-	LOG_DBG("end process server certificate");
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
 int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
-	LOG_DBG("entro a process client certificate");
-
 	TLSHandSecurityContext * sc;
 
 	if (message.obj_value_.message_ == 0) {
@@ -1002,15 +880,11 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 	//preparation for certificate verify message
 	unsigned char hash4[SHA256_DIGEST_LENGTH];
 	if(!SHA256(message.obj_value_.message_, message.obj_value_.size_, hash4)){
-		LOG_DBG("Could not hash message");
+		LOG_ERR("Could not hash message");
 		return IAuthPolicySet::FAILED;
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+96, hash4, 32);
-	LOG_DBG("verify hash4:" "%d", *sc->verify_hash.data);
-	LOG_DBG("verify hash4:" "%s", sc->verify_hash.data);
-	//end certificate verify hash
-
 
 	//transformar cert a x509 i guardar al context
 	const unsigned char *aux;
@@ -1024,9 +898,6 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 	if(sc->other_cert  == NULL)
 		LOG_ERR("Bad conversion to x509 :(");
 
-
-	LOG_DBG("end process client certificate");
-
 	//when client message received send server change cipher spec
 	if(sc->client_keys_received and sc->client_cert_verify_received and sc->client_cipher_received){
 		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
@@ -1038,8 +909,6 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
-	LOG_DBG("ini server decoding client keys");
-
 	TLSHandSecurityContext * sc;
 
 	if (message.obj_value_.message_ == 0) {
@@ -1074,14 +943,11 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	//preparation for certificate verify message
 	unsigned char hash5[SHA256_DIGEST_LENGTH];
 	if(!SHA256(message.obj_value_.message_, message.obj_value_.size_, hash5)){
-		LOG_DBG("Could not hash message");
+		LOG_ERR("Could not hash message");
 		return IAuthPolicySet::FAILED;
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+128, hash5, 32);
-	LOG_DBG("verify hash5:" "%d", *sc->verify_hash.data);
-	LOG_DBG("verify hash5:" "%s", sc->verify_hash.data);
-	//end certificate verify hash
 
 	EVP_PKEY *privkey = NULL;
 	RSA *rsakey;
@@ -1108,8 +974,6 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	UcharArray dec_pre_master_secret;
 	dec_pre_master_secret.data = new unsigned char[256];
 
-	LOG_DBG("encrypted pre_master_secret.data:" "%d", enc_pre_master_secret.data);
-
 	if((dec_pre_master_secret.length =  RSA_private_decrypt(enc_pre_master_secret.length,
 								enc_pre_master_secret.data,
 								dec_pre_master_secret.data,
@@ -1121,24 +985,12 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	}
 
 	//EVP_PKEY_free(privkey); //necesrai?
-	LOG_DBG("pre_master_secret.length:" "%d", dec_pre_master_secret.length);
-	LOG_DBG("decrypted pre_master_secret.data:" "%d", *dec_pre_master_secret.data);
-	LOG_DBG("decrypted pre_master_secret.data:" "%s", dec_pre_master_secret.data);
-
 
 	//start computing MASTERSECRET
 	//calculate_master_secret(sc, dec_pre_master_secret);
 	std::string slabel = "master secret";
-	LOG_DBG("slable: %d", &slabel);
-	LOG_DBG("slable len: %d", slabel.length());
-
 	UcharArray pre_seed(sc->client_random.random_bytes, sc->server_random.random_bytes);
-
-	LOG_DBG("pre seed:" "%d", *pre_seed.data);
 	prf(sc->master_secret,dec_pre_master_secret, slabel, pre_seed);
-
-
-	LOG_DBG("return from calculate ms");
 
 	if(sc->client_cert_received and sc->client_cert_verify_received and sc->client_cipher_received){
 		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
@@ -1152,8 +1004,6 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 int AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
-	LOG_DBG("ini server decoding client certificate verify");
-
 	TLSHandSecurityContext * sc;
 
 	if (message.obj_value_.message_ == 0) {
@@ -1218,11 +1068,6 @@ int AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::
 				sc->verify_hash.toString().c_str());
 		return -1;
 	}
-	LOG_DBG("Authenticating server. Decrypted Hashed cv: %s, calculated cv: %s",
-			dec_verify_hash.toString().c_str(),
-			sc->verify_hash.toString().c_str());
-
-	LOG_DBG("fi process client verify");
 
 	if(sc->client_keys_received and sc->client_cert_received and sc->client_cipher_received){
 		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
@@ -1276,16 +1121,12 @@ int AuthTLSHandPolicySet::process_server_change_cipher_spec_message(const cdap::
 	ScopedLock sc_lock(lock);
 
 
-	LOG_DBG("es aqui que falla???");
-	LOG_ERR("Wrong session state: %d", sc->state);
-
 	if (sc->state != TLSHandSecurityContext::WAIT_SERVER_CIPHER) {
 		LOG_ERR("Wrong session state: %d", sc->state);
 		sec_man->remove_security_context(session_id);
 		delete sc;
 		return IAuthPolicySet::FAILED;
 	}
-	LOG_DBG("potser no");
 
 	//TODO
 	/*Client needs to configure receive (kernel) before sending its cipher
@@ -1300,7 +1141,6 @@ int AuthTLSHandPolicySet::process_server_change_cipher_spec_message(const cdap::
 int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
-	LOG_DBG("entra a process client finish");
 	TLSHandSecurityContext * sc;
 
 	if (message.obj_value_.message_ == 0) {
@@ -1338,10 +1178,6 @@ int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage&
 
 		return IAuthPolicySet::FAILED;
 	}
-	LOG_DBG("Authenticating server. Decrypted Hashed cv: %s, calculated cv: %s",
-			dec_client_finish.toString().c_str(),
-			sc->verify_data.toString().c_str());
-
 
 	//Send server finish message
 	try {
@@ -1375,7 +1211,6 @@ int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage&
 int AuthTLSHandPolicySet::process_server_finish_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
-	LOG_DBG("entra a process server finish");
 	TLSHandSecurityContext * sc;
 
 	if (message.obj_value_.message_ == 0) {
@@ -1409,10 +1244,6 @@ int AuthTLSHandPolicySet::process_server_finish_message(const cdap::CDAPMessage&
 
 		return IAuthPolicySet::FAILED;
 	}
-	LOG_DBG("Authenticating server. Decrypted Hashed cv: %s, calculated cv: %s",
-			dec_server_finish.toString().c_str(),
-			sc->verify_data.toString().c_str());
-
 	return IAuthPolicySet::SUCCESSFULL;
 }
 
@@ -1455,15 +1286,11 @@ int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 	//compute hash for certificate verify message
 	unsigned char hash4[SHA256_DIGEST_LENGTH];
 	if(!SHA256(obj_info.value_.message_, obj_info.value_.size_, hash4)){
-		LOG_DBG("Could not hash message");
+		LOG_ERR("Could not hash message");
 		return IAuthPolicySet::FAILED;
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+96, hash4, 32);
-	LOG_DBG("verify hash4:" "%d", *sc->verify_hash.data);
-	LOG_DBG("verify hash4:" "%s", sc->verify_hash.data);
-	//end certificate verify hash
-
 
 	//sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA; //canviar a un de nou o no cal???
 	return IAuthPolicySet::IN_PROGRESS;
@@ -1472,7 +1299,6 @@ int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 {
 
-	LOG_DBG("enter to client key exchange");
 	//generar 48bytes rand, extreure pubkey, rsa_encrypt i enviar!
 
 	UcharArray pre_master_secret, enc_pre_master_secret;
@@ -1484,11 +1310,6 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 
 	if(RAND_bytes(pre_master_secret.data, pre_master_secret.length) != 1)
 		LOG_ERR("Problems generating random bytes");
-
-	//printar el random
-	LOG_DBG("pre_master_secret.data:");
-	LOG_DBG("pre_master_secret.data:" "%d", *pre_master_secret.data);
-	LOG_DBG("pre_master_secret.data:" "%s \n", pre_master_secret.data);
 
 	if(sc->other_cert == NULL)LOG_ERR("other cert mal guardat"); //aquesta comprovacio no cal, nomes es prova
 
@@ -1515,8 +1336,6 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 		//return -1;
 	}
 
-	LOG_DBG("After encryting en_pre_master length %d" , enc_pre_master_secret.length);
-	LOG_DBG("enc_pre_master_secret.data:" "%d", enc_pre_master_secret.data);
 
 	//es necessari??? free pkey
 	/*EVP_PKEY_free(pubkey);
@@ -1550,29 +1369,18 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	//preparation for certificate verify message
 	unsigned char hash5[SHA256_DIGEST_LENGTH];
 	if(!SHA256(obj_info.value_.message_, obj_info.value_.size_, hash5)){
-		LOG_DBG("Could not hash message");
+		LOG_ERR("Could not hash message");
 		return IAuthPolicySet::FAILED;
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+128, hash5, 32);
-	LOG_DBG("verify hash5:" "%d", *sc->verify_hash.data);
-	LOG_DBG("verify hash5:" "%s", sc->verify_hash.data);
-	//end certificate verify hash
-
 
 	//sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA; //canviar a un de nou o no cal???
-	LOG_DBG("fi client key exchange");
 
 	//calculate_master_secret(sc, pre_master_secret);
 	std::string slabel = "master secret";
-	LOG_DBG("slable: %d", &slabel);
-	LOG_DBG("slable len: %d", slabel.length());
-
 	UcharArray pre_seed(sc->client_random.random_bytes, sc->server_random.random_bytes);
-	LOG_DBG("pre seed:" "%d", *pre_seed.data);
 	prf(sc->master_secret,pre_master_secret, slabel, pre_seed);
-
-	LOG_DBG("fi calc ms client");
 
 	return IAuthPolicySet::IN_PROGRESS;
 }
@@ -1608,7 +1416,6 @@ int AuthTLSHandPolicySet::send_client_certificate_verify(TLSHandSecurityContext 
 		return -1;
 	}
 
-	LOG_DBG("After encryting cert verify length %d" , enc_cert_verify.length);
 
 	//Send client key exchange
 	try {
@@ -1670,8 +1477,6 @@ int AuthTLSHandPolicySet::send_client_change_cipher_spec(TLSHandSecurityContext 
 int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 {
 	//canviar estat, a wait el que sigui i fer tres funcions que cfacin dels tres misatges corresponents
-	LOG_DBG("process_client_3messages FUNCTION");
-
 	if (sc->state != TLSHandSecurityContext::CLIENT_SENDING_DATA) {
 		LOG_ERR("Wrong session state: %d", sc->state);
 		sec_man->destroy_security_context(sc->id);
@@ -1680,17 +1485,10 @@ int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 
 	//Send first message corresponding to the client_certificate
 	send_client_certificate(sc);
-
-	LOG_DBG("before calling send client_key exchange");
 	//Send second message corresponding to client_key_exchange
 	send_client_key_exchange(sc);
-	LOG_DBG("after calling send client_key exchange");
-
 	send_client_certificate_verify(sc);
-	LOG_DBG("after calling send client certificate verify");
-
 	send_client_change_cipher_spec(sc);
-
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_CIPHER;
 
 	return IAuthPolicySet::IN_PROGRESS;
@@ -1700,7 +1498,6 @@ int AuthTLSHandPolicySet::send_server_change_cipher_spec(TLSHandSecurityContext 
 {
 	//rebre i actualitzar el record de rebre a d'anar al kernel i etc
 
-	LOG_DBG("server send cipher");
 	if (sc->state != TLSHandSecurityContext::SERVER_SENDING_CIPHER) {
 		LOG_ERR("Wrong session state: %d", sc->state);
 		sec_man->destroy_security_context(sc->id);
@@ -1740,7 +1537,6 @@ int AuthTLSHandPolicySet::send_server_change_cipher_spec(TLSHandSecurityContext 
 
 int AuthTLSHandPolicySet::send_client_finish(TLSHandSecurityContext * sc)
 {
-	LOG_DBG("send client finish");
 	if (sc->state != TLSHandSecurityContext::WAIT_SERVER_FINISH) {
 		LOG_ERR("Wrong session state: %d", sc->state);
 		sec_man->destroy_security_context(sc->id);
