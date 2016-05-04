@@ -1359,14 +1359,24 @@ int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage&
 	}
 
 
-	UcharArray client_finish;
-	decode_finsih_message_tls_hand(message.obj_value_,client_finish);
-	/*que es fa quan es rep un finish?????
-	 * s'envia l'alte finish i que?
-	 */
+	UcharArray dec_client_finish;
+	decode_finsih_message_tls_hand(message.obj_value_,dec_client_finish);
 
+	//Calculate my finish prf
 	std::string slabel ="finish label";
 	prf(sc->verify_data,sc->master_secret, slabel, sc->verify_hash);
+
+	if (dec_client_finish != sc->verify_data) {
+		LOG_ERR("Error authenticating server. Decrypted finish: %s, stored finish: %s",
+				dec_client_finish.toString().c_str(),
+				sc->verify_data.toString().c_str());
+
+		return IAuthPolicySet::FAILED;
+	}
+	LOG_DBG("Authenticating server. Decrypted Hashed cv: %s, calculated cv: %s",
+			dec_client_finish.toString().c_str(),
+			sc->verify_data.toString().c_str());
+
 
 	//Send server finish message
 	try {
@@ -1393,13 +1403,51 @@ int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage&
 	}
 
 	sc->state = TLSHandSecurityContext::SERVER_SENDING_FINISH;
-	return IAuthPolicySet::IN_PROGRESS;
+	return IAuthPolicySet::SUCCESSFULL;
 
 }
 
 int AuthTLSHandPolicySet::process_server_finish_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
+	LOG_DBG("entra a process server finish");
+	TLSHandSecurityContext * sc;
+
+	if (message.obj_value_.message_ == 0) {
+		LOG_ERR("Null object value");
+		return IAuthPolicySet::FAILED;
+	}
+
+	sc = dynamic_cast<TLSHandSecurityContext *>(sec_man->get_security_context(session_id));
+	if (!sc) {
+		LOG_ERR("Could not retrieve Security Context for session: %d", session_id);
+		return IAuthPolicySet::FAILED;
+	}
+
+	ScopedLock sc_lock(lock);
+
+	if (sc->state != TLSHandSecurityContext::WAIT_SERVER_FINISH) {
+		LOG_ERR("Wrong session state: %d", sc->state);
+		sec_man->remove_security_context(session_id);
+		delete sc;
+		return IAuthPolicySet::FAILED;
+	}
+
+
+	UcharArray dec_server_finish;
+	decode_finsih_message_tls_hand(message.obj_value_, dec_server_finish);
+
+	if (dec_server_finish != sc->verify_data) {
+		LOG_ERR("Error authenticating server. Decrypted finish: %s, stored finish: %s",
+				dec_server_finish.toString().c_str(),
+				sc->verify_data.toString().c_str());
+
+		return IAuthPolicySet::FAILED;
+	}
+	LOG_DBG("Authenticating server. Decrypted Hashed cv: %s, calculated cv: %s",
+			dec_server_finish.toString().c_str(),
+			sc->verify_data.toString().c_str());
+
 	return IAuthPolicySet::SUCCESSFULL;
 }
 
