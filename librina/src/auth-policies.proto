@@ -34,13 +34,9 @@ message serverHelloTLSHandshake_t {
 	optional uint32 ap_con_id = 6;			// Application connection id
 }
 
-message serverCertificateTLSHandshake_t {
+message CertificateTLSHandshake_t {
 	optional bytes certificate_chain = 1;			// The encoded certificate chain
 }
-	
-message clientCertificateTLSHandshake_t {
-	optional bytes certificate_chain = 1;			// The encoded certificate chain
-}	
 
 message clientKeyExchangeTLSHandshake_t {
 	optional bytes enc_pmaster_secret = 1;			// The encrypted pre-master secret

@@ -23,19 +23,14 @@
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
-
-//BERTA
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
-#include <openssl/x509_vfy.h>
-#include <stdio.h>
-#include <string.h>
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <openssl/sha.h>
- #include <openssl/hmac.h>
+#include <openssl/hmac.h>
 
 
 
@@ -153,65 +148,35 @@ void decode_server_hello_tls_hand(const ser_obj_t &message,
 
 
 //Server certificate
-void encode_server_certificate_tls_hand(const UcharArray& certificate_chain,
+void encode_certificate_tls_hand(const UcharArray& certificate_chain,
 		ser_obj_t& result)
 {
-	rina::auth::policies::googleprotobuf::serverCertificateTLSHandshake_t gpb_scertificate;
+	rina::auth::policies::googleprotobuf::CertificateTLSHandshake_t gpb_certificate;
 
-	gpb_scertificate.set_certificate_chain(certificate_chain.data, certificate_chain.length);
+	gpb_certificate.set_certificate_chain(certificate_chain.data, certificate_chain.length);
 
-	int size = gpb_scertificate.ByteSize();
+	int size = gpb_certificate.ByteSize();
 	result.message_ = new unsigned char[size];
 	result.size_ = size;
-	gpb_scertificate.SerializeToArray(result.message_ , size);
+	gpb_certificate.SerializeToArray(result.message_ , size);
 }
 
-void decode_server_certificate_tls_hand(const ser_obj_t &message,
+void decode_certificate_tls_hand(const ser_obj_t &message,
 		 UcharArray& certificate_chain)
 {
-	rina::auth::policies::googleprotobuf::serverCertificateTLSHandshake_t gpb_scertificate;
+	rina::auth::policies::googleprotobuf::CertificateTLSHandshake_t gpb_certificate;
 
-	gpb_scertificate.ParseFromArray(message.message_, message.size_);
+	gpb_certificate.ParseFromArray(message.message_, message.size_);
 
-	if (gpb_scertificate.has_certificate_chain()) {
-		certificate_chain.data =  new unsigned char[gpb_scertificate.certificate_chain().size()];
+	if (gpb_certificate.has_certificate_chain()) {
+		certificate_chain.data =  new unsigned char[gpb_certificate.certificate_chain().size()];
 		memcpy(certificate_chain.data,
-				gpb_scertificate.certificate_chain().data(),
-				gpb_scertificate.certificate_chain().size());
-		certificate_chain.length = gpb_scertificate.certificate_chain().size();
+				gpb_certificate.certificate_chain().data(),
+				gpb_certificate.certificate_chain().size());
+		certificate_chain.length = gpb_certificate.certificate_chain().size();
 	}
 }
 
-//Client certificate
-void encode_client_certificate_tls_hand(const UcharArray& certificate_chain,
-		ser_obj_t& result)
-{
-	rina::auth::policies::googleprotobuf::clientCertificateTLSHandshake_t gpb_ccertificate;
-
-	gpb_ccertificate.set_certificate_chain(certificate_chain.data, certificate_chain.length);
-
-	int size = gpb_ccertificate.ByteSize();
-	result.message_ = new unsigned char[size];
-	result.size_ = size;
-	gpb_ccertificate.SerializeToArray(result.message_ , size);
-}
-
-void decode_client_certificate_tls_hand(const ser_obj_t &message,
-		 UcharArray& certificate_chain)
-{
-	rina::auth::policies::googleprotobuf::clientCertificateTLSHandshake_t gpb_ccertificate;
-
-	gpb_ccertificate.ParseFromArray(message.message_, message.size_);
-
-	//certificate_chain = gpb_scertificate.certificate_chain().data();
-	if (gpb_ccertificate.has_certificate_chain()) {
-		certificate_chain.data =  new unsigned char[gpb_ccertificate.certificate_chain().size()];
-		memcpy(certificate_chain.data,
-				gpb_ccertificate.certificate_chain().data(),
-				gpb_ccertificate.certificate_chain().size());
-		certificate_chain.length = gpb_ccertificate.certificate_chain().size();
-	}
-}
 //Client key_exchange
 void encode_client_key_exchange_tls_hand(const UcharArray& enc_pmaster_secret,
 		ser_obj_t& result)
@@ -636,7 +601,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 		obj_info1.class_ = SERVER_CERTIFICATE;
 		obj_info1.name_ = SERVER_CERTIFICATE;
 		obj_info1.inst_ = 0;
-		encode_server_certificate_tls_hand(encoded_cert,
+		encode_certificate_tls_hand(encoded_cert,
 				obj_info1.value_);
 
 		rib_daemon->remote_write(sc->con,
@@ -962,7 +927,7 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 	sc->cert_received = true;
 
 	UcharArray certificate_chain;
-	decode_server_certificate_tls_hand(message.obj_value_,certificate_chain);
+	decode_certificate_tls_hand(message.obj_value_,certificate_chain);
 
 	//hash3 to concatenate for verify message
 	unsigned char hash3[SHA256_DIGEST_LENGTH];
@@ -1030,7 +995,7 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 		timer.scheduleTask(sc->timer_task, timeout);*/
 
 	UcharArray certificate_chain;
-	decode_client_certificate_tls_hand(message.obj_value_,certificate_chain);////canviar!!
+	decode_certificate_tls_hand(message.obj_value_,certificate_chain);////canviar!!
 
 	sc->client_cert_received = true;
 
@@ -1472,7 +1437,7 @@ int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 		obj_info.class_ = CLIENT_CERTIFICATE;
 		obj_info.name_ = CLIENT_CERTIFICATE;
 		obj_info.inst_ = 0;
-		encode_client_certificate_tls_hand(encoded_cert,
+		encode_certificate_tls_hand(encoded_cert,
 				obj_info.value_);
 
 		rib_daemon->remote_write(sc->con,

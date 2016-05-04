@@ -74,24 +74,22 @@ public:
 	static const std::string KEYSTORE_PATH;
 	static const std::string KEYSTORE_PASSWORD;
 
-	//Berta
+
 	static const std::string CERTIFICATE_PATH;
 	static const std::string MY_CERTIFICATE;
-
 	static const std::string PRIV_KEY_PATH;
 
 
         enum State {
         	BEGIN,
                 WAIT_SERVER_HELLO_and_CERTIFICATE,
-		WAIT_CLIENT_CERTIFICATE_and_KEYS,
+		WAIT_CLIENT_CERTIFICATE_and_KEYS, //and change cipher spec and verify, name could be better
 		CLIENT_SENDING_DATA,
 		SERVER_SENDING_CIPHER,
 		WAIT_SERVER_CIPHER,
 		WAIT_SERVER_FINISH,
 		SERVER_SENDING_FINISH,
-		//WAIT_SERVER_CERTIFICATE,
-                DONE
+		DONE
         };
 
         State state;
@@ -107,24 +105,20 @@ public:
 	std::string keystore_path;
 	std::string keystore_password;
 
-	//Authentication Certificates
+	//Authentication Certificate and path
 	std::string certificate_path;
 	std::string priv_key_path;
 
-
-	//Master secret generated in key exchange
+	//Master secret
 	UcharArray master_secret;
 
-	//finished hash, 12Bytes;
+	//Hash generated in finish message, 12Bytes;
 	UcharArray verify_data;
 
-	//hashed received/sent messages (5mess*32length);
+	//Hash of TLS handshake messages (5mess*32length);
 	UcharArray verify_hash;
 
-
-
-
-	//Berta certificates presence
+	//Certificate presence
 	bool cert_received;
 	bool hello_received;
 
@@ -190,7 +184,6 @@ public:
 private:
 	int process_server_hello_message(const cdap::CDAPMessage& message,
 					 int session_id);
-	//BERTA
 	int process_server_certificate_message(const cdap::CDAPMessage& message,
 						 int session_id);
 	int process_client_certificate_message(const cdap::CDAPMessage& message,
@@ -214,13 +207,11 @@ private:
 	int send_client_change_cipher_spec(TLSHandSecurityContext * sc);
 	int send_server_change_cipher_spec(TLSHandSecurityContext * sc);
 	int send_client_finish(TLSHandSecurityContext * sc);
-	//FI BERTA
 
 	int load_credentials(TLSHandSecurityContext * sc);
-	//int calculate_master_secret(TLSHandSecurityContext * sc, UcharArray& pre);
 	int prf(UcharArray& generated_hash, UcharArray& secret, const std::string& slabel, UcharArray& pre_seed);
 
-	//Load the authentication certificate required for this DIF from a file
+	//Load the authentication certificate
 	int load_authentication_certificate(TLSHandSecurityContext * sc);
 
 	rib::RIBDaemonProxy * rib_daemon;
