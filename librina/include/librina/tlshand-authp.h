@@ -89,6 +89,7 @@ public:
 		SERVER_SENDING_CIPHER,
 		WAIT_SERVER_CIPHER,
 		WAIT_SERVER_FINISH,
+		SERVER_SENDING_FINISH,
 		//WAIT_SERVER_CERTIFICATE,
                 DONE
         };
@@ -115,7 +116,7 @@ public:
 	UcharArray master_secret;
 
 	//finished hash, 12Bytes;
-	UcharArray finish_prf;
+	UcharArray verify_data;
 
 	//hashed received/sent messages (5mess*32length);
 	UcharArray verify_hash;
@@ -166,6 +167,8 @@ public:
 	static const std::string CLIENT_CERTIFICATE_VERIFY;
 	static const std::string CLIENT_CHANGE_CIPHER_SPEC;
 	static const std::string SERVER_CHANGE_CIPHER_SPEC;
+	static const std::string CLIENT_FINISH;
+	static const std::string SERVER_FINISH;
 
 	AuthTLSHandPolicySet(rib::RIBDaemonProxy * ribd,
 			     ISecurityManager * sm);
@@ -198,6 +201,8 @@ private:
 	int process_client_change_cipher_spec_message(const cdap::CDAPMessage& message,
 			int session_id);
 	int process_server_change_cipher_spec_message (const cdap::CDAPMessage& message,
+			int session_id);
+	int process_client_finish_message(const cdap::CDAPMessage& message,
 			int session_id);
 	int send_client_messages(TLSHandSecurityContext * sc);
 	int send_client_certificate(TLSHandSecurityContext * sc);

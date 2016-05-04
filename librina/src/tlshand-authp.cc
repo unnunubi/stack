@@ -271,6 +271,34 @@ void decode_client_certificate_verify_tls_hand(const ser_obj_t &message,
 		}
 }
 
+//Finish messages
+void encode_finish_message_tls_hand(const UcharArray& opaque_verify_data,
+		ser_obj_t& result)
+{
+	rina::auth::policies::googleprotobuf::FinishMessageTLSHandshake_t gpb_finish;
+
+	gpb_finish.set_opaque_verify_data(opaque_verify_data.data, opaque_verify_data.length);
+
+	int size = gpb_finish.ByteSize();
+	result.message_ = new unsigned char[size];
+	result.size_ = size;
+	gpb_finish.SerializeToArray(result.message_ , size);
+}
+void decode_finsih_message_tls_hand(const ser_obj_t &message,
+		UcharArray& opaque_verify_data)
+{
+	rina::auth::policies::googleprotobuf::FinishMessageTLSHandshake_t gpb_finish;
+
+	gpb_finish.ParseFromArray(message.message_, message.size_);
+
+	if (gpb_finish.has_opaque_verify_data()) {
+		opaque_verify_data.data =  new unsigned char[gpb_finish.opaque_verify_data().size()];
+		memcpy(opaque_verify_data.data,
+				gpb_finish.opaque_verify_data().data(),
+				gpb_finish.opaque_verify_data().size());
+		opaque_verify_data.length = gpb_finish.opaque_verify_data().size();
+	}
+}
 
 
 // Class TLSHandSecurityContext
@@ -337,8 +365,8 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 	client_cipher_received = false;
 	master_secret.length = 48;
 	master_secret.data = new unsigned char[48];
-	finish_prf.length = 12;
-	finish_prf.data = new unsigned char[12];
+	verify_data.length = 12;
+	verify_data.data = new unsigned char[12];
 }
 
 TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
@@ -390,8 +418,8 @@ TLSHandSecurityContext::TLSHandSecurityContext(int session_id,
 	client_cipher_received = false;
 	master_secret.length = 48;
 	master_secret.data = new unsigned char[48];
-	finish_prf.length = 12;
-	finish_prf.data = new unsigned char[12];
+	verify_data.length = 12;
+	verify_data.data = new unsigned char[12];
 
 
 	state = BEGIN;
@@ -406,6 +434,9 @@ const std::string AuthTLSHandPolicySet::CLIENT_KEY_EXCHANGE = "Client key exchan
 const std::string AuthTLSHandPolicySet::CLIENT_CERTIFICATE_VERIFY = "Client certificate verify";
 const std::string AuthTLSHandPolicySet::CLIENT_CHANGE_CIPHER_SPEC = "Client change cipher spec";
 const std::string AuthTLSHandPolicySet::SERVER_CHANGE_CIPHER_SPEC = "Server change cipher spec";
+const std::string AuthTLSHandPolicySet::CLIENT_FINISH = "Client finish";
+const std::string AuthTLSHandPolicySet::SERVER_FINISH = "Server finish";
+
 
 
 AuthTLSHandPolicySet::AuthTLSHandPolicySet(rib::RIBDaemonProxy * ribd,
@@ -671,6 +702,10 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 		LOG_DBG("client process server cipher OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_server_change_cipher_spec_message(message, session_id);
 	}
+	if (message.obj_class_ == CLIENT_FINISH) {
+		LOG_DBG("client process server cipher OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
+		return process_client_finish_message(message, session_id);
+	}
 
 
 	return rina::IAuthPolicySet::FAILED;
@@ -719,67 +754,38 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 	vec[0].length=32;
 	vec[0].data = new unsigned char[32];
 	memcpy(vec[0].data, seed.data, seed.length);
-	LOG_DBG("before enter loop\n");
 
-	//compute a[i], for determined length
+	//compute a[i], for determined length and second hmac call
 	for(int i = 1; i <= it; ++i){
-		LOG_DBG("i primer bucle  %d", i);
 		vec[i].length = 32;
 		vec[i].data = new unsigned char[32];
-		LOG_DBG("first hmac\n");
-		LOG_DBG("secret data  %s", secret.data);
 		HMAC(EVP_sha256(),secret.data, secret.length, vec[i-1].data, vec[i-1].length, vec[i].data, (unsigned *)(&vec[i].length));
 		if(vec[i].data == NULL)LOG_ERR("Error calculating master secret");
-		LOG_DBG("aX : %d", *vec[i].data);
-		LOG_DBG("aX : %s", vec[i].data);
-		LOG_DBG("aX length : %d", vec[i].length);
 
 		UcharArray X0(vec[i], vec[0]);
 		vres[i].length = 32;
 		vres[i].data = new unsigned char[32];
 		LOG_DBG("second hmac\n");
 		HMAC(EVP_sha256(),secret.data, secret.length, X0.data, X0.length, vres[i].data, (unsigned *)(&vres[i].length));
-		LOG_DBG("res : %d", *vres[i].data);
-		LOG_DBG("res : %s", vres[i].data);
-		LOG_DBG("res length : %d", vres[i].length);
-
-		LOG_DBG("primer loop%d\n", i);
+		if(vres[i].data == NULL)LOG_ERR("Error calculating master secret");
 	}
-	LOG_DBG("fin primer loop\n");
-
 	UcharArray con(it*32);
 	if(it == 1) memcpy(generated_hash.data, vres[1].data, generated_hash.length);
 	//repassar!!!
 	else {
 		for(int i = 1; i <= it-1; ++i){
 			UcharArray concatenate(vres[i], vres[i+1]);
-			//con[i].length = concatenate.length;
-			//con[i].data = new unsigned char[concatenate.length];
 			memcpy(con.data+((i-1)*concatenate.length), concatenate.data, concatenate.length);
 			LOG_DBG("segon loop%",i);
 
 		}
 		memcpy(generated_hash.data, con.data, generated_hash.length);
 	}
-	LOG_DBG("fi segon loop\n");
-
-
-	/*//fi calculs dos parts del master secret;
-		UcharArray aux_master_secret(res1,res2);
-		UcharArray master_secret(48);
-		memcpy(master_secret.data, aux_master_secret.data, 48);*/
-
-
 	//borrar debugs
 	LOG_DBG("ms length : %d", generated_hash.length);
 	for (int i=0; i< generated_hash.length; i++) {
 		LOG_DBG("ms data : %d %d", i, generated_hash.data[i]);
 	}
-
-
-	LOG_DBG("fin calculate prfss");
-
-
 	return 0;
 
 }
@@ -1316,8 +1322,69 @@ int AuthTLSHandPolicySet::process_server_change_cipher_spec_message(const cdap::
 	return send_client_finish(sc);
 }
 
+int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage& message,
+		int session_id)
+{
+	TLSHandSecurityContext * sc;
+
+	if (message.obj_value_.message_ == 0) {
+		LOG_ERR("Null object value");
+		return IAuthPolicySet::FAILED;
+	}
+
+	sc = dynamic_cast<TLSHandSecurityContext *>(sec_man->get_security_context(session_id));
+	if (!sc) {
+		LOG_ERR("Could not retrieve Security Context for session: %d", session_id);
+		return IAuthPolicySet::FAILED;
+	}
+
+	ScopedLock sc_lock(lock);
+
+	if (sc->state != TLSHandSecurityContext::SERVER_SENDING_CIPHER) {
+		LOG_ERR("Wrong session state: %d", sc->state);
+		sec_man->remove_security_context(session_id);
+		delete sc;
+		return IAuthPolicySet::FAILED;
+	}
 
 
+	UcharArray client_finish;
+	decode_finsih_message_tls_hand(message.obj_value_,client_finish);
+	/*que es fa quan es rep un finish?????
+	 * s'envia l'alte finish i que?
+	 */
+
+	std::string slabel ="finish label";
+	prf(sc->verify_data,sc->master_secret, slabel, sc->verify_hash);
+
+	//Send server finish message
+	try {
+		cdap_rib::flags_t flags;
+		cdap_rib::filt_info_t filt;
+		cdap_rib::obj_info_t obj_info;
+		cdap::StringEncoder encoder;
+
+		obj_info.class_ = SERVER_FINISH;
+		obj_info.name_ = SERVER_FINISH;
+		obj_info.inst_ = 0;
+		encode_finish_message_tls_hand(sc->verify_data,
+				obj_info.value_);
+
+		rib_daemon->remote_write(sc->con,
+				obj_info,
+				flags,
+				filt,
+				NULL);
+	} catch (Exception &e) {
+		LOG_ERR("Problems encoding and sending CDAP message: %s",e.what());
+		sec_man->destroy_security_context(sc->id);
+		return IAuthPolicySet::FAILED;
+	}
+
+	sc->state = TLSHandSecurityContext::SERVER_SENDING_FINISH;
+	return IAuthPolicySet::IN_PROGRESS;
+
+}
 
 
 int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
@@ -1642,6 +1709,38 @@ int AuthTLSHandPolicySet::send_server_change_cipher_spec(TLSHandSecurityContext 
 
 int AuthTLSHandPolicySet::send_client_finish(TLSHandSecurityContext * sc)
 {
+	if (sc->state != TLSHandSecurityContext::WAIT_SERVER_CIPHER) {
+		LOG_ERR("Wrong state of policy");
+		sec_man->destroy_security_context(sc->id);
+		return IAuthPolicySet::FAILED;
+	}
+
+	std::string slabel ="finish label";
+	prf(sc->verify_data,sc->master_secret, slabel, sc->verify_hash);
+
+	//Send client finish message
+	try {
+		cdap_rib::flags_t flags;
+		cdap_rib::filt_info_t filt;
+		cdap_rib::obj_info_t obj_info;
+		cdap::StringEncoder encoder;
+
+		obj_info.class_ = CLIENT_FINISH;
+		obj_info.name_ = CLIENT_FINISH;
+		obj_info.inst_ = 0;
+		encode_finish_message_tls_hand(sc->verify_data,
+				obj_info.value_);
+
+		rib_daemon->remote_write(sc->con,
+				obj_info,
+				flags,
+				filt,
+				NULL);
+	} catch (Exception &e) {
+		LOG_ERR("Problems encoding and sending CDAP message: %s",e.what());
+		sec_man->destroy_security_context(sc->id);
+		return IAuthPolicySet::FAILED;
+	}
 
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_FINISH;
 	return IAuthPolicySet::IN_PROGRESS;
