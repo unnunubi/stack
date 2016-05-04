@@ -121,8 +121,6 @@ public:
 	//hashed received/sent messages (5mess*32length);
 	UcharArray verify_hash;
 
-	//Hashed finish message
-	UcharArray finish;
 
 
 
