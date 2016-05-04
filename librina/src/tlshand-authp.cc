@@ -739,7 +739,7 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 	}
 	LOG_DBG("fin primer loop\n");
 
-	UcharArray con(it*32);
+	/*UcharArray con(it*32);
 	if(it == 1) memcpy(generated_hash.data, vres[1].data, generated_hash.length);
 	//repassar!!!
 	else {
@@ -753,7 +753,8 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 		}
 		memcpy(generated_hash.data, con.data, generated_hash.length);
 	}
-	LOG_DBG("fin segundo loop\n");
+	LOG_DBG("fin segundo loop\n");*/
+
 
 	/*//fi calculs dos parts del master secret;
 		UcharArray aux_master_secret(res1,res2);
@@ -1146,7 +1147,10 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	std::string slabel = "master secret";
 	LOG_DBG("slable: %d", &slabel);
 	LOG_DBG("slable len: %d", slabel.length());
+
 	UcharArray pre_seed(sc->client_random.random_bytes, sc->server_random.random_bytes);
+
+	LOG_DBG("pre seed:" "%d", *pre_seed.data);
 	prf(sc->master_secret,dec_pre_master_secret, slabel, pre_seed);
 
 
@@ -1459,7 +1463,9 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	std::string slabel = "master secret";
 	LOG_DBG("slable: %d", &slabel);
 	LOG_DBG("slable len: %d", slabel.length());
+
 	UcharArray pre_seed(sc->client_random.random_bytes, sc->server_random.random_bytes);
+	LOG_DBG("pre seed:" "%d", *pre_seed.data);
 	prf(sc->master_secret,pre_master_secret, slabel, pre_seed);
 
 	LOG_DBG("fi calc ms client");
