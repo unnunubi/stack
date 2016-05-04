@@ -751,8 +751,8 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 	//calculate seed, v(0) = seed;
 	UcharArray seed(label, pre_seed);
 	LOG_DBG("seed data  %d", seed.data);
-	vec[0].length=32;
-	vec[0].data = new unsigned char[32];
+	vec[0].length=seed.length;
+	vec[0].data = new unsigned char[seed.length];
 	memcpy(vec[0].data, seed.data, seed.length);
 
 	//compute a[i], for determined length and second hmac call
@@ -786,7 +786,8 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 	for (int i=0; i< generated_hash.length; i++) {
 		LOG_DBG("ms data : %d %d", i, generated_hash.data[i]);
 	}
-	return 0;
+	LOG_DBG("fi prf");
+	return 1;
 
 }
 
