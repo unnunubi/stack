@@ -1307,6 +1307,8 @@ int AuthTLSHandPolicySet::process_server_change_cipher_spec_message(const cdap::
 	ScopedLock sc_lock(lock);
 
 
+	LOG_DBG("es aqui que falla???");
+	LOG_ERR("Wrong session state: %d", sc->state);
 
 	if (sc->state != TLSHandSecurityContext::WAIT_SERVER_CIPHER) {
 		LOG_ERR("Wrong session state: %d", sc->state);
@@ -1314,6 +1316,7 @@ int AuthTLSHandPolicySet::process_server_change_cipher_spec_message(const cdap::
 		delete sc;
 		return IAuthPolicySet::FAILED;
 	}
+	LOG_DBG("potser no");
 
 	//TODO
 	/*Client needs to configure receive (kernel) before sending its cipher
@@ -1328,6 +1331,7 @@ int AuthTLSHandPolicySet::process_server_change_cipher_spec_message(const cdap::
 int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
+	LOG_DBG("entra a process client finish");
 	TLSHandSecurityContext * sc;
 
 	if (message.obj_value_.message_ == 0) {
@@ -1673,6 +1677,8 @@ int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 int AuthTLSHandPolicySet::send_server_change_cipher_spec(TLSHandSecurityContext * sc)
 {
 	//rebre i actualitzar el record de rebre a d'anar al kernel i etc
+
+	LOG_DBG("server send cipher");
 	if (sc->state != TLSHandSecurityContext::SERVER_SENDING_CIPHER) {
 		LOG_ERR("Wrong state of policy");
 		sec_man->destroy_security_context(sc->id);
@@ -1712,7 +1718,8 @@ int AuthTLSHandPolicySet::send_server_change_cipher_spec(TLSHandSecurityContext 
 
 int AuthTLSHandPolicySet::send_client_finish(TLSHandSecurityContext * sc)
 {
-	if (sc->state != TLSHandSecurityContext::WAIT_SERVER_CIPHER) {
+	LOG_DBG("send client finish");
+	if (sc->state != TLSHandSecurityContext::WAIT_SERVER_FINISH) {
 		LOG_ERR("Wrong state of policy");
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
