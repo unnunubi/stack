@@ -1306,6 +1306,7 @@ int AuthTLSHandPolicySet::process_server_change_cipher_spec_message(const cdap::
 	}
 	ScopedLock sc_lock(lock);
 
+	LOG_DBG("sc state before fail %s", sc->state);
 	if (sc->state != TLSHandSecurityContext::WAIT_SERVER_CIPHER) {
 		LOG_ERR("Wrong session state: %d", sc->state);
 		sec_man->remove_security_context(session_id);
