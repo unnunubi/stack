@@ -204,6 +204,8 @@ private:
 			int session_id);
 	int process_client_finish_message(const cdap::CDAPMessage& message,
 			int session_id);
+	int process_server_finish_message(const cdap::CDAPMessage& message,
+			int session_id);
 	int send_client_messages(TLSHandSecurityContext * sc);
 	int send_client_certificate(TLSHandSecurityContext * sc);
 	int send_client_key_exchange(TLSHandSecurityContext * sc);

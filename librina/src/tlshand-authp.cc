@@ -706,6 +706,10 @@ int AuthTLSHandPolicySet::process_incoming_message(const cdap::CDAPMessage& mess
 		LOG_DBG("client process server cipher OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
 		return process_client_finish_message(message, session_id);
 	}
+	if (message.obj_class_ == SERVER_FINISH) {
+		LOG_DBG("client process server cipher OOOOBBBBBBBJJJJEEEE class"); //ESBORRRRRRRRAAAARRR!!!!
+		return process_server_finish_message(message, session_id);
+	}
 
 
 	return rina::IAuthPolicySet::FAILED;
@@ -1393,6 +1397,11 @@ int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage&
 
 }
 
+int AuthTLSHandPolicySet::process_server_finish_message(const cdap::CDAPMessage& message,
+		int session_id)
+{
+	return IAuthPolicySet::SUCCESSFULL;
+}
 
 int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 {
@@ -1651,7 +1660,7 @@ int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 	LOG_DBG("process_client_3messages FUNCTION");
 
 	if (sc->state != TLSHandSecurityContext::CLIENT_SENDING_DATA) {
-		LOG_ERR("Wrong state of policy");
+		LOG_ERR("Wrong session state: %d", sc->state);
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
@@ -1680,7 +1689,7 @@ int AuthTLSHandPolicySet::send_server_change_cipher_spec(TLSHandSecurityContext 
 
 	LOG_DBG("server send cipher");
 	if (sc->state != TLSHandSecurityContext::SERVER_SENDING_CIPHER) {
-		LOG_ERR("Wrong state of policy");
+		LOG_ERR("Wrong session state: %d", sc->state);
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
@@ -1720,7 +1729,7 @@ int AuthTLSHandPolicySet::send_client_finish(TLSHandSecurityContext * sc)
 {
 	LOG_DBG("send client finish");
 	if (sc->state != TLSHandSecurityContext::WAIT_SERVER_FINISH) {
-		LOG_ERR("Wrong state of policy");
+		LOG_ERR("Wrong session state: %d", sc->state);
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
