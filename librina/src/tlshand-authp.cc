@@ -702,21 +702,9 @@ int AuthTLSHandPolicySet::load_authentication_certificate(TLSHandSecurityContext
 
 int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  const std::string& slabel, UcharArray& pre_seed)
 {
-	LOG_DBG("start prf function\n\n");
 	//convert label to UcharArray
 	UcharArray label(slabel.length());
 	memcpy(label.data, slabel.c_str(), slabel.length());
-
-	LOG_DBG("ucgar label data %s", label.data);
-
-	//PROVES
-/*	unsigned char aux[14] = "master secret";
-
-	memcpy(label.data, aux, label.length);*/
-	LOG_DBG("prova label  %s", label.data);
-	LOG_DBG("prova label  %d", &label.data);
-
-
 
 	//compute how many times we need to hask a(i)
 	int it = (generated_hash.length/32);
@@ -725,13 +713,12 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 	std::vector<UcharArray> vec(it+1);
 	std::vector<UcharArray> vres(it+1);
 
-	LOG_DBG("fin de declaracion del vector\n");
-
+	//calculate seed, v(0) = seed;
 	UcharArray seed(label, pre_seed);
 	LOG_DBG("seed data  %d", seed.data);
 	vec[0].length=32;
 	vec[0].data = new unsigned char[32];
-	memcpy(vec[0].data, seed.data, 32);
+	memcpy(vec[0].data, seed.data, seed.length);
 	LOG_DBG("before enter loop\n");
 
 	//compute a[i], for determined length
