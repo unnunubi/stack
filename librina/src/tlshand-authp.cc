@@ -31,6 +31,7 @@
 #include <openssl/pem.h>
 #include <openssl/sha.h>
 #include <openssl/hmac.h>
+#include <timer.h>
 
 
 
@@ -1050,6 +1051,10 @@ int AuthTLSHandPolicySet::process_client_change_cipher_spec_message(const cdap::
 		int session_id)
 {
 	TLSHandSecurityContext * sc;
+	if (message.obj_value_.message_ == 0) {
+		LOG_ERR("Null object value");
+		return IAuthPolicySet::FAILED;
+	}
 	sc = dynamic_cast<TLSHandSecurityContext *>(sec_man->get_security_context(session_id));
 	if (!sc) {
 		LOG_ERR("Could not retrieve Security Context for session: %d", session_id);
@@ -1082,6 +1087,10 @@ int AuthTLSHandPolicySet::process_server_change_cipher_spec_message(const cdap::
 		int session_id)
 {
 	TLSHandSecurityContext * sc;
+	if (message.obj_value_.message_ == 0) {
+		LOG_ERR("Null object value");
+		return IAuthPolicySet::FAILED;
+	}
 	sc = dynamic_cast<TLSHandSecurityContext *>(sec_man->get_security_context(session_id));
 	if (!sc) {
 		LOG_ERR("Could not retrieve Security Context for session: %d", session_id);
