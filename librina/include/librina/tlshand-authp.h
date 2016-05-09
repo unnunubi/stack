@@ -169,9 +169,11 @@ public:
 			     ISecurityManager * sm);
 	virtual ~AuthTLSHandPolicySet();
 	cdap_rib::auth_policy_t get_auth_policy(int session_id,
+						const cdap_rib::ep_info_t& peer_ap,
 				   	        const AuthSDUProtectionProfile& profile);
 	AuthStatus initiate_authentication(const cdap_rib::auth_policy_t& auth_policy,
 				           const AuthSDUProtectionProfile& profile,
+					   const cdap_rib::ep_info_t& peer_ap,
 					   int session_id);
 	int process_incoming_message(const cdap::CDAPMessage& message, int session_id);
 	int set_policy_set_param(const std::string& name,
