@@ -31,7 +31,6 @@
 #include <openssl/pem.h>
 #include <openssl/sha.h>
 #include <openssl/hmac.h>
-#include <timer.h>
 
 
 
@@ -474,6 +473,7 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data, hash1, 32);
 
+	//timer??
 	return auth_policy;
 }
 
@@ -611,6 +611,8 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+64, hash3, 32);
+
+	//timer
 
 	return IAuthPolicySet::IN_PROGRESS;
 }
@@ -769,6 +771,7 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 	//if certificate received change state
 	if(sc->cert_received) {
 		sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA;
+		//timer?
 		return send_client_messages(sc);
 
 	}
@@ -827,6 +830,7 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 
 	if(sc->hello_received) {
 		sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA;
+		//timer?
 		return send_client_messages(sc);
 	}
 	return IAuthPolicySet::IN_PROGRESS;
@@ -884,6 +888,7 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 
 	if(sc->client_keys_received and sc->client_cert_verify_received and sc->client_cipher_received){
 		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
+		//timer?
 		return send_server_change_cipher_spec(sc);
 	}
 	return IAuthPolicySet::IN_PROGRESS;
@@ -971,6 +976,7 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 	if(sc->client_cert_received and sc->client_cert_verify_received and sc->client_cipher_received){
 		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
+		//timer?
 		return send_server_change_cipher_spec(sc);
 	}
 	return IAuthPolicySet::IN_PROGRESS;
@@ -1041,6 +1047,7 @@ int AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::
 
 	if(sc->client_keys_received and sc->client_cert_received and sc->client_cipher_received){
 		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
+		//timer?
 		return send_server_change_cipher_spec(sc);
 	}
 
@@ -1078,6 +1085,7 @@ int AuthTLSHandPolicySet::process_client_change_cipher_spec_message(const cdap::
 	sc->client_cipher_received = true;
 	if(sc->client_keys_received and sc->client_cert_received and sc->client_cert_verify_received){
 		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
+		//timer?
 		return send_server_change_cipher_spec(sc);
 	}
 	return IAuthPolicySet::IN_PROGRESS;
@@ -1182,6 +1190,7 @@ int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage&
 	}
 
 	sc->state = TLSHandSecurityContext::SERVER_SENDING_FINISH;
+	//timer?
 	return IAuthPolicySet::SUCCESSFULL;
 
 }
@@ -1220,6 +1229,7 @@ int AuthTLSHandPolicySet::process_server_finish_message(const cdap::CDAPMessage&
 
 		return IAuthPolicySet::FAILED;
 	}
+	//stop timer?
 	return IAuthPolicySet::SUCCESSFULL;
 }
 
@@ -1267,6 +1277,7 @@ int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+96, hash4, 32);
+	//timer?
 	return IAuthPolicySet::IN_PROGRESS;
 
 }
@@ -1456,6 +1467,7 @@ int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 	send_client_certificate_verify(sc);
 	send_client_change_cipher_spec(sc);
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_CIPHER;
+	//timer?
 
 	return IAuthPolicySet::IN_PROGRESS;
 }
@@ -1535,6 +1547,7 @@ int AuthTLSHandPolicySet::send_client_finish(TLSHandSecurityContext * sc)
 	}
 
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_FINISH;
+	//timer?
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
