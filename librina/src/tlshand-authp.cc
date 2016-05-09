@@ -414,8 +414,11 @@ AuthTLSHandPolicySet::~AuthTLSHandPolicySet()
 }
 
 cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
-		const AuthSDUProtectionProfile& profile)
+							      const cdap_rib::ep_info_t& peer_ap,
+							      const AuthSDUProtectionProfile& profile)
 {
+	(void) peer_ap;
+
 	if (profile.authPolicy.name_ != type) {
 		LOG_ERR("Wrong policy name: %s, expected: %s",
 				profile.authPolicy.name_.c_str(),
@@ -477,9 +480,12 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 }
 
 IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const cdap_rib::auth_policy_t& auth_policy,
-		const AuthSDUProtectionProfile& profile,
-		int session_id)
+									 const AuthSDUProtectionProfile& profile,
+									 const cdap_rib::ep_info_t& peer_ap,
+									 int session_id)
 {
+	(void) peer_ap;
+
 	if (auth_policy.name != type) {
 		LOG_ERR("Wrong policy name: %s", auth_policy.name.c_str());
 		return IAuthPolicySet::FAILED;
