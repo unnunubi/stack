@@ -476,7 +476,6 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data, hash1, 32);
 
-	//timer??
 	return auth_policy;
 }
 
@@ -564,6 +563,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 		delete sc;
 		return IAuthPolicySet::FAILED;
 	}
+	timer.scheduleTask(sc->timer_task, timeout);
 
 	//Get onj.info_value to obtain second hash message [32,--64]
 	unsigned char hash2[SHA256_DIGEST_LENGTH];
@@ -609,6 +609,8 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	sc->state = TLSHandSecurityContext::WAIT_CLIENT_CERTIFICATE_and_KEYS;
 	sec_man->add_security_context(sc);
 
+	timer.scheduleTask(sc->timer_task, timeout);
+
 	//Get obj.info_value to obtain third hash message [64,--96]
 	unsigned char hash3[SHA256_DIGEST_LENGTH];
 	if(!SHA256(obj_info1.value_.message_, obj_info1.value_.size_, hash3)){
@@ -617,8 +619,6 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+64, hash3, 32);
-
-	//timer
 
 	return IAuthPolicySet::IN_PROGRESS;
 }
@@ -764,6 +764,8 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 			sc->compress_method,
 			sc->version);
 
+	timer.cancelTask(sc->timer_task);
+
 	//Get obj.info_value options to obtain third hash message [0,--31]
 	unsigned char hash2[SHA256_DIGEST_LENGTH];
 	if(!SHA256(message.obj_value_.message_, message.obj_value_.size_, hash2)){
@@ -777,7 +779,6 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 	//if certificate received change state
 	if(sc->cert_received) {
 		sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA;
-		//timer?
 		return send_client_messages(sc);
 
 	}
@@ -812,6 +813,7 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 
 	UcharArray certificate_chain;
 	decode_certificate_tls_hand(message.obj_value_,certificate_chain);
+	timer.cancelTask(sc->timer_task);
 
 	//hash3 to concatenate for verify message
 	unsigned char hash3[SHA256_DIGEST_LENGTH];
@@ -836,7 +838,6 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 
 	if(sc->hello_received) {
 		sc->state = TLSHandSecurityContext::CLIENT_SENDING_DATA;
-		//timer?
 		return send_client_messages(sc);
 	}
 	return IAuthPolicySet::IN_PROGRESS;
@@ -868,6 +869,7 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 	}
 	UcharArray certificate_chain;
 	decode_certificate_tls_hand(message.obj_value_,certificate_chain);
+	timer.cancelTask(sc->timer_task);
 
 	sc->client_cert_received = true;
 
@@ -894,7 +896,6 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 
 	if(sc->client_keys_received and sc->client_cert_verify_received and sc->client_cipher_received){
 		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
-		//timer?
 		return send_server_change_cipher_spec(sc);
 	}
 	return IAuthPolicySet::IN_PROGRESS;
@@ -928,6 +929,7 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	UcharArray enc_pre_master_secret;
 	decode_client_key_exchange_tls_hand(message.obj_value_, enc_pre_master_secret);
 	sc->client_keys_received = true;
+	timer.cancelTask(sc->timer_task);
 
 	//preparation for certificate verify message
 	unsigned char hash5[SHA256_DIGEST_LENGTH];
@@ -982,7 +984,6 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 	if(sc->client_cert_received and sc->client_cert_verify_received and sc->client_cipher_received){
 		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
-		//timer?
 		return send_server_change_cipher_spec(sc);
 	}
 	return IAuthPolicySet::IN_PROGRESS;
@@ -1016,6 +1017,7 @@ int AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::
 	UcharArray enc_verify_hash;
 	decode_client_certificate_verify_tls_hand(message.obj_value_, enc_verify_hash);
 	sc->client_cert_verify_received = true;
+	timer.cancelTask(sc->timer_task);
 
 	UcharArray dec_verify_hash;
 	EVP_PKEY *pubkey = NULL;
@@ -1053,7 +1055,6 @@ int AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::
 
 	if(sc->client_keys_received and sc->client_cert_received and sc->client_cipher_received){
 		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
-		//timer?
 		return send_server_change_cipher_spec(sc);
 	}
 
@@ -1082,6 +1083,7 @@ int AuthTLSHandPolicySet::process_client_change_cipher_spec_message(const cdap::
 		delete sc;
 		return IAuthPolicySet::FAILED;
 	}
+	timer.cancelTask(sc->timer_task);
 
 	//TODO
 	/*Server has received client change cipher spec,
@@ -1091,7 +1093,6 @@ int AuthTLSHandPolicySet::process_client_change_cipher_spec_message(const cdap::
 	sc->client_cipher_received = true;
 	if(sc->client_keys_received and sc->client_cert_received and sc->client_cert_verify_received){
 		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
-		//timer?
 		return send_server_change_cipher_spec(sc);
 	}
 	return IAuthPolicySet::IN_PROGRESS;
@@ -1119,6 +1120,8 @@ int AuthTLSHandPolicySet::process_server_change_cipher_spec_message(const cdap::
 		delete sc;
 		return IAuthPolicySet::FAILED;
 	}
+
+	timer.cancelTask(sc->timer_task);
 
 	//TODO
 	/*Client needs to configure receive (kernel) before sending its cipher
@@ -1159,6 +1162,7 @@ int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage&
 	UcharArray dec_client_finish;
 	decode_finsih_message_tls_hand(message.obj_value_,dec_client_finish);
 
+
 	//Calculate my finish prf
 	std::string slabel ="finish label";
 	prf(sc->verify_data,sc->master_secret, slabel, sc->verify_hash);
@@ -1194,9 +1198,8 @@ int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage&
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
-
+	timer.cancelTask(sc->timer_task);
 	sc->state = TLSHandSecurityContext::SERVER_SENDING_FINISH;
-	//timer?
 	return IAuthPolicySet::SUCCESSFULL;
 
 }
@@ -1235,7 +1238,7 @@ int AuthTLSHandPolicySet::process_server_finish_message(const cdap::CDAPMessage&
 
 		return IAuthPolicySet::FAILED;
 	}
-	//stop timer?
+	timer.cancelTask(sc->timer_task);
 	return IAuthPolicySet::SUCCESSFULL;
 }
 
@@ -1274,6 +1277,7 @@ int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
+	timer.scheduleTask(sc->timer_task, timeout);
 
 	//compute hash for certificate verify message
 	unsigned char hash4[SHA256_DIGEST_LENGTH];
@@ -1283,7 +1287,6 @@ int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 	}
 	//prepare verify_hash vector for posterior signing
 	memcpy(sc->verify_hash.data+96, hash4, 32);
-	//timer?
 	return IAuthPolicySet::IN_PROGRESS;
 
 }
@@ -1352,6 +1355,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
+	timer.scheduleTask(sc->timer_task, timeout);
 
 	//preparation for certificate verify message
 	unsigned char hash5[SHA256_DIGEST_LENGTH];
@@ -1425,6 +1429,7 @@ int AuthTLSHandPolicySet::send_client_certificate_verify(TLSHandSecurityContext 
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
+	timer.scheduleTask(sc->timer_task, timeout);
 	return IAuthPolicySet::IN_PROGRESS;
 
 }
@@ -1456,6 +1461,7 @@ int AuthTLSHandPolicySet::send_client_change_cipher_spec(TLSHandSecurityContext 
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
+	timer.scheduleTask(sc->timer_task, timeout);
 	return 0;
 }
 
@@ -1473,7 +1479,6 @@ int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 	send_client_certificate_verify(sc);
 	send_client_change_cipher_spec(sc);
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_CIPHER;
-	//timer?
 
 	return IAuthPolicySet::IN_PROGRESS;
 }
@@ -1514,6 +1519,7 @@ int AuthTLSHandPolicySet::send_server_change_cipher_spec(TLSHandSecurityContext 
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
+	timer.scheduleTask(sc->timer_task, timeout);
 	return 0;
 }
 
@@ -1551,9 +1557,8 @@ int AuthTLSHandPolicySet::send_client_finish(TLSHandSecurityContext * sc)
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
-
+	timer.scheduleTask(sc->timer_task, timeout);
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_FINISH;
-	//timer?
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
