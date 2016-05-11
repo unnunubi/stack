@@ -1429,6 +1429,7 @@ int AuthTLSHandPolicySet::send_client_certificate_verify(TLSHandSecurityContext 
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
+
 	timer.scheduleTask(sc->timer_task, timeout);
 	return IAuthPolicySet::IN_PROGRESS;
 
