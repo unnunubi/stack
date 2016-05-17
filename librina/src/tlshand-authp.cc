@@ -1162,7 +1162,7 @@ int AuthTLSHandPolicySet::process_server_change_cipher_spec_message(const cdap::
 	}
 
 	sc->state = TLSHandSecurityContext::REQUESTED_ENABLE_ENCRYPTION_DECRYPTION_CLIENT;
-	if (result == IAuthPolicySet::SUCCESSFULL) {
+	if (result == IAuthPolicySet::IN_PROGRESS) {
 		encryption_decryption_enabled_client(sc);
 	}
 	return 1;
@@ -1222,7 +1222,7 @@ int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage&
 		return result;
 	}
 	sc->state = TLSHandSecurityContext::REQUESTED_ENABLE_ENCRYPTION_SERVER;
-	if (result == IAuthPolicySet::SUCCESSFULL) {
+	if (result == IAuthPolicySet::IN_PROGRESS) {
 		encryption_enabled_server(sc);
 	}
 	return 1;
