@@ -1190,6 +1190,7 @@ int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage&
 
 	if (sc->state != TLSHandSecurityContext::SERVER_SENDING_CIPHER) {
 		LOG_ERR("Wrong session state: %d", sc->state);
+		LOG_DBG("peta aqui?????????????????");
 		sec_man->remove_security_context(session_id);
 		delete sc;
 		return IAuthPolicySet::FAILED;
@@ -1267,6 +1268,7 @@ int AuthTLSHandPolicySet::process_server_finish_message(const cdap::CDAPMessage&
 		return IAuthPolicySet::FAILED;
 	}
 	timer.cancelTask(sc->timer_task);
+	sc->state = TLSHandSecurityContext::DONE;
 	return IAuthPolicySet::SUCCESSFULL;
 }
 
@@ -1508,6 +1510,8 @@ int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 	send_client_change_cipher_spec(sc);
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_CIPHER;
 
+	LOG_DBG("fienvio 4 missatges cleint");
+
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
@@ -1709,7 +1713,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::encryption_enabled_server(TLSHa
 		return IAuthPolicySet::FAILED;
 	}
 	timer.cancelTask(sc->timer_task);
-	sc->state = TLSHandSecurityContext::SERVER_SENDING_FINISH;
+	sc->state = TLSHandSecurityContext::DONE;
 	return IAuthPolicySet::SUCCESSFULL;
 }
 
