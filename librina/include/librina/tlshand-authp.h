@@ -54,6 +54,9 @@ public:
 
 	/// Supported compression methods, sorted by order of preference
 	std::list<std::string> compress_methods;
+
+	/// Supported encryption algorithms
+	std::list<std::string> encrypt_algs;
 };
 
 ///Captures all data of the TLS HAndshake security context
@@ -79,6 +82,8 @@ public:
 	static const std::string MY_CERTIFICATE;
 	static const std::string PRIV_KEY_PATH;
 
+	static const std::string ENCRYPTION_ALGORITHM;
+
 
         enum State {
         	BEGIN,
@@ -89,6 +94,9 @@ public:
 		WAIT_SERVER_CIPHER,
 		WAIT_SERVER_FINISH,
 		SERVER_SENDING_FINISH,
+		REQUESTED_ENABLE_ENCRYPTION_SERVER,
+		REQUESTED_ENABLE_DECRYPTION_SERVER,
+		REQUESTED_ENABLE_ENCRYPTION_DECRYPTION_CLIENT,
 		DONE
         };
 
@@ -100,6 +108,8 @@ public:
 	/// Negotiated algorithms
 	std::string cipher_suite;
 	std::string compress_method;
+
+	std::string encrypt_alg;
 
 	/// Authentication Keystore path and password
 	std::string keystore_path;
@@ -117,6 +127,9 @@ public:
 
 	//Hash of TLS handshake messages (5mess*32length);
 	UcharArray verify_hash;
+
+	//Encryption keys for kernel
+	UcharArray encrypt_key;
 
 	//Certificate presence
 	bool cert_received;
@@ -215,6 +228,12 @@ private:
 
 	//Load the authentication certificate
 	int load_authentication_certificate(TLSHandSecurityContext * sc);
+
+	//encryption/decryption
+	AuthStatus generate_encryption_key(TLSHandSecurityContext * sc);
+	AuthStatus decryption_enabled_server(TLSHandSecurityContext * sc);
+	AuthStatus encryption_decryption_enabled_client(TLSHandSecurityContext * sc);
+	AuthStatus encryption_enabled_server (TLSHandSecurityContext * sc);
 
 	rib::RIBDaemonProxy * rib_daemon;
 	ISecurityManager * sec_man;
