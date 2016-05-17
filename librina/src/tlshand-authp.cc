@@ -1211,11 +1211,13 @@ int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage&
 
 		return IAuthPolicySet::FAILED;
 	}
+	LOG_ERR(" state session process client finish: %d", sc->state);
 
 	//SDU
 	//TODO
 	// Configure kernel SDU protection policy with master secret and algorithms
 	// tell it to enable encryption
+	LOG_ERR("before update crypto state in process client finish");
 	AuthStatus result = sec_man->update_crypto_state(sc->get_crypto_state(true, true),this);
 	if (result == IAuthPolicySet::FAILED) {
 		delete sc;
@@ -1225,7 +1227,7 @@ int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage&
 	if (result == IAuthPolicySet::IN_PROGRESS) {
 		encryption_enabled_server(sc);
 	}
-	return 1;
+	return 0;
 	//fi SDU
 
 }
@@ -1683,6 +1685,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::encryption_enabled_server(TLSHa
 
 	LOG_DBG("Encryption enabled for port-id: %d", sc->id);
 	//Send server finish message
+	LOG_DBG("sendinf server finish before");
 	try {
 		cdap_rib::flags_t flags;
 		cdap_rib::filt_info_t filt;
