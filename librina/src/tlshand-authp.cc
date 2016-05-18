@@ -490,6 +490,8 @@ cdap_rib::auth_policy_t AuthTLSHandPolicySet::get_auth_policy(int session_id,
 	//Initialized verify hash, used in certificate verify message
 	sc->verify_hash.data = new unsigned char[32*5];
 	sc->verify_hash.length = 32*5;
+	sc->master_secret.length = 48;
+	sc->master_secret.data = new unsigned char[48];
 
 	//Get auth policy options to obtain first hash message [0,--31]
 	unsigned char hash1[SHA256_DIGEST_LENGTH];
@@ -542,6 +544,8 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::initiate_authentication(const c
 	//Initialized verify hash, used in certificate verify message
 	sc->verify_hash.data = new unsigned char[32*5];
 	sc->verify_hash.length = 32*5;
+	sc->master_secret.length = 48;
+	sc->master_secret.data = new unsigned char[48];
 	//Get auth policy options to obtain first hash message [0,--31]
 	unsigned char hash1[SHA256_DIGEST_LENGTH];
 	if(!SHA256(auth_policy.options.message_, auth_policy.options.size_, hash1)){
@@ -747,7 +751,6 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 		for(int i = 1; i <= it-1; ++i){
 			UcharArray concatenate(vres[i], vres[i+1]);
 			memcpy(con.data+((i-1)*concatenate.length), concatenate.data, concatenate.length);
-			LOG_DBG("segon loop%",i);
 
 		}
 		memcpy(generated_hash.data, con.data, generated_hash.length);
@@ -756,7 +759,7 @@ int AuthTLSHandPolicySet::prf(UcharArray& generated_hash, UcharArray& secret,  c
 
 }
 
-int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& message,
+IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
 	TLSHandSecurityContext * sc;
@@ -809,7 +812,7 @@ int AuthTLSHandPolicySet::process_server_hello_message(const cdap::CDAPMessage& 
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
-int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMessage& message,
+IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
 	TLSHandSecurityContext * sc;
@@ -867,7 +870,7 @@ int AuthTLSHandPolicySet::process_server_certificate_message(const cdap::CDAPMes
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
-int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMessage& message,
+IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
 	TLSHandSecurityContext * sc;
@@ -925,7 +928,7 @@ int AuthTLSHandPolicySet::process_client_certificate_message(const cdap::CDAPMes
 	return IAuthPolicySet::IN_PROGRESS;
 
 }
-int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMessage& message,
+IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
 	TLSHandSecurityContext * sc;
@@ -959,6 +962,8 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	unsigned char hash5[SHA256_DIGEST_LENGTH];
 	if(!SHA256(message.obj_value_.message_, message.obj_value_.size_, hash5)){
 		LOG_ERR("Could not hash message");
+		sec_man->remove_security_context(session_id);
+		delete sc;
 		return IAuthPolicySet::FAILED;
 	}
 	//prepare verify_hash vector for posterior signing
@@ -971,7 +976,9 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	key =  BIO_new_file(sc->priv_key_path.c_str(), "r");
 	if (!key) {
 		LOG_ERR("Problems opening key file at: %s",sc->priv_key_path.c_str());
-		return -1;
+		sec_man->remove_security_context(session_id);
+		delete sc;
+		return IAuthPolicySet::FAILED;
 	}
 
 	privkey = PEM_read_bio_PrivateKey(key, NULL, 0, NULL);
@@ -979,7 +986,9 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 
 	if (!privkey) {
 		LOG_ERR("Problems reading  key",ERR_error_string(ERR_get_error(), NULL));
-		return -1;
+		sec_man->remove_security_context(session_id);
+		delete sc;
+		return IAuthPolicySet::FAILED;
 	}
 
 	rsakey = EVP_PKEY_get1_RSA(privkey);
@@ -1015,7 +1024,7 @@ int AuthTLSHandPolicySet::process_client_key_exchange_message(const cdap::CDAPMe
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
-int AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::CDAPMessage& message,
+IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
 	TLSHandSecurityContext * sc;
@@ -1068,7 +1077,9 @@ int AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::
 			RSA_PKCS1_PADDING)) == -1){
 		LOG_ERR("Error decrypting certificate verify");
 		LOG_ERR("Error decrypting certificate verify with RSA public key: %s", ERR_error_string(ERR_get_error(), NULL));
-		return -1;
+		sec_man->remove_security_context(session_id);
+		delete sc;
+		return IAuthPolicySet::FAILED;
 	}
 
 	//Compare calculated hash with received decrypted hash, should be the same if ok auth
@@ -1087,7 +1098,7 @@ int AuthTLSHandPolicySet::process_client_certificate_verify_message(const cdap::
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
-int AuthTLSHandPolicySet::process_client_change_cipher_spec_message(const cdap::CDAPMessage& message,
+IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::process_client_change_cipher_spec_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
 	TLSHandSecurityContext * sc;
@@ -1111,6 +1122,14 @@ int AuthTLSHandPolicySet::process_client_change_cipher_spec_message(const cdap::
 	}
 	timer.cancelTask(sc->timer_task);
 
+	if(!sc->client_keys_received or !sc->client_cert_received or !sc->client_cert_verify_received){
+		LOG_ERR("Not enough messages received to proceed...");
+		sec_man->remove_security_context(session_id);
+		delete sc;
+		return IAuthPolicySet::FAILED;
+	}
+
+
 	//TODO
 	// Configure kernel SDU protection policy with master secret and algorithms
 	// tell it to enable decryption
@@ -1121,13 +1140,13 @@ int AuthTLSHandPolicySet::process_client_change_cipher_spec_message(const cdap::
 	}
 	sc->state = TLSHandSecurityContext::REQUESTED_ENABLE_DECRYPTION_SERVER;
 	if (result == IAuthPolicySet::SUCCESSFULL) {
-		decryption_enabled_server(sc);
+		result = decryption_enabled_server(sc);
 	}
-	return 1;
+	return result;
 	//fi SDU
 }
 
-int AuthTLSHandPolicySet::process_server_change_cipher_spec_message(const cdap::CDAPMessage& message,
+IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::process_server_change_cipher_spec_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
 	TLSHandSecurityContext * sc;
@@ -1145,6 +1164,7 @@ int AuthTLSHandPolicySet::process_server_change_cipher_spec_message(const cdap::
 
 	if (sc->state != TLSHandSecurityContext::WAIT_SERVER_CIPHER) {
 		LOG_ERR("Wrong session state: %d", sc->state);
+		LOG_ERR("falla  a process server change");
 		sec_man->remove_security_context(session_id);
 		delete sc;
 		return IAuthPolicySet::FAILED;
@@ -1162,15 +1182,14 @@ int AuthTLSHandPolicySet::process_server_change_cipher_spec_message(const cdap::
 	}
 
 	sc->state = TLSHandSecurityContext::REQUESTED_ENABLE_ENCRYPTION_DECRYPTION_CLIENT;
-	if (result == IAuthPolicySet::IN_PROGRESS) {
-		encryption_decryption_enabled_client(sc);
+	if (result == IAuthPolicySet::SUCCESSFULL) {
+		result = encryption_decryption_enabled_client(sc);
 	}
-	return 1;
-	//FI SDU
+	return result;
 
 }
 
-int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage& message,
+IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
 	TLSHandSecurityContext * sc;
@@ -1190,7 +1209,6 @@ int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage&
 
 	if (sc->state != TLSHandSecurityContext::SERVER_SENDING_CIPHER) {
 		LOG_ERR("Wrong session state: %d", sc->state);
-		LOG_DBG("peta aqui?????????????????");
 		sec_man->remove_security_context(session_id);
 		delete sc;
 		return IAuthPolicySet::FAILED;
@@ -1212,28 +1230,24 @@ int AuthTLSHandPolicySet::process_client_finish_message(const cdap::CDAPMessage&
 
 		return IAuthPolicySet::FAILED;
 	}
-	LOG_ERR(" state session process client finish: %d", sc->state);
-
 	//SDU
 	//TODO
 	// Configure kernel SDU protection policy with master secret and algorithms
 	// tell it to enable encryption
-	LOG_ERR("before update crypto state in process client finish");
 	AuthStatus result = sec_man->update_crypto_state(sc->get_crypto_state(true, true),this);
 	if (result == IAuthPolicySet::FAILED) {
 		delete sc;
 		return result;
 	}
 	sc->state = TLSHandSecurityContext::REQUESTED_ENABLE_ENCRYPTION_SERVER;
-	if (result == IAuthPolicySet::IN_PROGRESS) {
-		encryption_enabled_server(sc);
+	if (result == IAuthPolicySet::SUCCESSFULL) {
+		result = encryption_enabled_server(sc);
 	}
-	return 0;
-	//fi SDU
+	return result;
 
 }
 
-int AuthTLSHandPolicySet::process_server_finish_message(const cdap::CDAPMessage& message,
+IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::process_server_finish_message(const cdap::CDAPMessage& message,
 		int session_id)
 {
 	TLSHandSecurityContext * sc;
@@ -1253,6 +1267,7 @@ int AuthTLSHandPolicySet::process_server_finish_message(const cdap::CDAPMessage&
 
 	if (sc->state != TLSHandSecurityContext::WAIT_SERVER_FINISH) {
 		LOG_ERR("Wrong session state: %d", sc->state);
+		LOG_DBG("peta a process server_finish");
 		sec_man->remove_security_context(session_id);
 		delete sc;
 		return IAuthPolicySet::FAILED;
@@ -1272,7 +1287,7 @@ int AuthTLSHandPolicySet::process_server_finish_message(const cdap::CDAPMessage&
 	return IAuthPolicySet::SUCCESSFULL;
 }
 
-int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
+IAuthPolicySet::AuthStatus  AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 {
 
 	load_authentication_certificate(sc);
@@ -1320,7 +1335,8 @@ int AuthTLSHandPolicySet::send_client_certificate(TLSHandSecurityContext * sc)
 	return IAuthPolicySet::IN_PROGRESS;
 
 }
-int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
+
+IAuthPolicySet::AuthStatus  AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 {
 
 	UcharArray pre_master_secret, enc_pre_master_secret;
@@ -1407,7 +1423,7 @@ int AuthTLSHandPolicySet::send_client_key_exchange(TLSHandSecurityContext * sc)
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
-int AuthTLSHandPolicySet::send_client_certificate_verify(TLSHandSecurityContext * sc)
+IAuthPolicySet::AuthStatus  AuthTLSHandPolicySet::send_client_certificate_verify(TLSHandSecurityContext * sc)
 {
 
 	RSA *rsa_priv_key;
@@ -1416,14 +1432,14 @@ int AuthTLSHandPolicySet::send_client_certificate_verify(TLSHandSecurityContext 
 	key =  BIO_new_file(sc->priv_key_path.c_str(), "r");
 	if (!key) {
 		LOG_ERR("Problems opening key file at: %s",sc->priv_key_path.c_str());
-		return -1;
+		return IAuthPolicySet::FAILED;
 	}
 	rsa_priv_key = PEM_read_bio_RSAPrivateKey(key, NULL, 0, NULL);
 	BIO_free(key);
 
 	if (!rsa_priv_key) {
 		LOG_ERR("Problems reading  key",ERR_error_string(ERR_get_error(), NULL));
-		return -1;
+		return IAuthPolicySet::FAILED;
 	}
 
 	//encrypt the hash of all mesages with private rsa key of IPCP A
@@ -1435,7 +1451,7 @@ int AuthTLSHandPolicySet::send_client_certificate_verify(TLSHandSecurityContext 
 							RSA_PKCS1_PADDING)) == -1){
 		LOG_ERR("Error encrypting certificate verify hash");
 		LOG_ERR("Error encrypting certificate verify hash with private key: %s", ERR_error_string(ERR_get_error(), NULL));
-		return -1;
+		return IAuthPolicySet::FAILED;
 	}
 
 
@@ -1467,7 +1483,7 @@ int AuthTLSHandPolicySet::send_client_certificate_verify(TLSHandSecurityContext 
 	return IAuthPolicySet::IN_PROGRESS;
 
 }
-int AuthTLSHandPolicySet::send_client_change_cipher_spec(TLSHandSecurityContext * sc)
+IAuthPolicySet::AuthStatus  AuthTLSHandPolicySet::send_client_change_cipher_spec(TLSHandSecurityContext * sc)
 {
 	try {
 		cdap_rib::flags_t flags;
@@ -1492,10 +1508,10 @@ int AuthTLSHandPolicySet::send_client_change_cipher_spec(TLSHandSecurityContext 
 		return IAuthPolicySet::FAILED;
 	}
 	timer.scheduleTask(sc->timer_task, timeout);
-	return 0;
+	return IAuthPolicySet::IN_PROGRESS;
 }
 
-int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
+IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 {
 
 	if (sc->state != TLSHandSecurityContext::CLIENT_SENDING_DATA) {
@@ -1515,7 +1531,7 @@ int AuthTLSHandPolicySet::send_client_messages(TLSHandSecurityContext * sc)
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
-int AuthTLSHandPolicySet::send_server_change_cipher_spec(TLSHandSecurityContext * sc)
+IAuthPolicySet::AuthStatus  AuthTLSHandPolicySet::send_server_change_cipher_spec(TLSHandSecurityContext * sc)
 {
 	if (sc->state != TLSHandSecurityContext::SERVER_SENDING_CIPHER) {
 		LOG_ERR("Wrong session state: %d", sc->state);
@@ -1550,10 +1566,11 @@ int AuthTLSHandPolicySet::send_server_change_cipher_spec(TLSHandSecurityContext 
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
-int AuthTLSHandPolicySet::send_client_finish(TLSHandSecurityContext * sc)
+IAuthPolicySet::AuthStatus  AuthTLSHandPolicySet::send_client_finish(TLSHandSecurityContext * sc)
 {
 	if (sc->state != TLSHandSecurityContext::WAIT_SERVER_FINISH) {
 		LOG_ERR("Wrong session state: %d", sc->state);
+		LOG_DBG("falla a send client function");
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
@@ -1584,8 +1601,10 @@ int AuthTLSHandPolicySet::send_client_finish(TLSHandSecurityContext * sc)
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
+
 	timer.scheduleTask(sc->timer_task, timeout);
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_FINISH;
+	LOG_DBG("after sending client finish");
 	return IAuthPolicySet::IN_PROGRESS;
 }
 
@@ -1619,6 +1638,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::crypto_state_updated(int port_i
 		return encryption_decryption_enabled_client(sc);
 	default:
 		LOG_ERR("Wrong security context state: %d", sc->state);
+		LOG_ERR("es aqui oi??crypto state update");
 		sec_man->destroy_security_context(sc->id);
 		return IAuthPolicySet::FAILED;
 	}
@@ -1626,7 +1646,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::crypto_state_updated(int port_i
 
 
 
-IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::generate_encryption_key(TLSHandSecurityContext * sc)
+int AuthTLSHandPolicySet::generate_encryption_key(TLSHandSecurityContext * sc)
 {
 
 	if (sc->encrypt_alg == SSL_TXT_AES128) {
@@ -1656,12 +1676,8 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::decryption_enabled_server(TLSHa
 	}
 
 	LOG_DBG("Decryption enabled for port-id: %d", sc->id);
-	sc->client_cipher_received = true;
-	if(sc->client_keys_received and sc->client_cert_received and sc->client_cert_verify_received){
-		sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
-		send_server_change_cipher_spec(sc);
-	}
-	return IAuthPolicySet::IN_PROGRESS;
+	sc->state = TLSHandSecurityContext::SERVER_SENDING_CIPHER;
+	return send_server_change_cipher_spec(sc);
 }
 
 IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::encryption_decryption_enabled_client(TLSHandSecurityContext * sc)
@@ -1675,8 +1691,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::encryption_decryption_enabled_c
 
 
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_FINISH;
-	send_client_finish(sc);
-	return IAuthPolicySet::IN_PROGRESS;
+	return send_client_finish(sc);
 }
 
 IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::encryption_enabled_server(TLSHandSecurityContext * sc)
@@ -1689,7 +1704,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::encryption_enabled_server(TLSHa
 
 	LOG_DBG("Encryption enabled for port-id: %d", sc->id);
 	//Send server finish message
-	LOG_DBG("sendinf server finish before");
+	LOG_DBG("sending server finish before");
 	try {
 		cdap_rib::flags_t flags;
 		cdap_rib::filt_info_t filt;

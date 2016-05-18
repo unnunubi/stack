@@ -197,31 +197,31 @@ public:
 	AuthStatus crypto_state_updated(int port_id);
 
 private:
-	int process_server_hello_message(const cdap::CDAPMessage& message,
+	AuthStatus process_server_hello_message(const cdap::CDAPMessage& message,
 					 int session_id);
-	int process_server_certificate_message(const cdap::CDAPMessage& message,
+	AuthStatus process_server_certificate_message(const cdap::CDAPMessage& message,
 						 int session_id);
-	int process_client_certificate_message(const cdap::CDAPMessage& message,
+	AuthStatus process_client_certificate_message(const cdap::CDAPMessage& message,
 							 int session_id);
-	int process_client_key_exchange_message(const cdap::CDAPMessage& message,
+	AuthStatus process_client_key_exchange_message(const cdap::CDAPMessage& message,
 								 int session_id);
-	int process_client_certificate_verify_message(const cdap::CDAPMessage& message,
+	AuthStatus process_client_certificate_verify_message(const cdap::CDAPMessage& message,
 									 int session_id);
-	int process_client_change_cipher_spec_message(const cdap::CDAPMessage& message,
+	AuthStatus process_client_change_cipher_spec_message(const cdap::CDAPMessage& message,
 			int session_id);
-	int process_server_change_cipher_spec_message (const cdap::CDAPMessage& message,
+	AuthStatus process_server_change_cipher_spec_message (const cdap::CDAPMessage& message,
 			int session_id);
-	int process_client_finish_message(const cdap::CDAPMessage& message,
+	AuthStatus process_client_finish_message(const cdap::CDAPMessage& message,
 			int session_id);
-	int process_server_finish_message(const cdap::CDAPMessage& message,
+	AuthStatus process_server_finish_message(const cdap::CDAPMessage& message,
 			int session_id);
-	int send_client_messages(TLSHandSecurityContext * sc);
-	int send_client_certificate(TLSHandSecurityContext * sc);
-	int send_client_key_exchange(TLSHandSecurityContext * sc);
-	int send_client_certificate_verify(TLSHandSecurityContext * sc);
-	int send_client_change_cipher_spec(TLSHandSecurityContext * sc);
-	int send_server_change_cipher_spec(TLSHandSecurityContext * sc);
-	int send_client_finish(TLSHandSecurityContext * sc);
+	AuthStatus send_client_messages(TLSHandSecurityContext * sc);
+	AuthStatus send_client_certificate(TLSHandSecurityContext * sc);
+	AuthStatus send_client_key_exchange(TLSHandSecurityContext * sc);
+	AuthStatus send_client_certificate_verify(TLSHandSecurityContext * sc);
+	AuthStatus send_client_change_cipher_spec(TLSHandSecurityContext * sc);
+	AuthStatus send_server_change_cipher_spec(TLSHandSecurityContext * sc);
+	AuthStatus send_client_finish(TLSHandSecurityContext * sc);
 
 	int load_credentials(TLSHandSecurityContext * sc);
 	int prf(UcharArray& generated_hash, UcharArray& secret, const std::string& slabel, UcharArray& pre_seed);
@@ -230,7 +230,7 @@ private:
 	int load_authentication_certificate(TLSHandSecurityContext * sc);
 
 	//encryption/decryption
-	AuthStatus generate_encryption_key(TLSHandSecurityContext * sc);
+	int generate_encryption_key(TLSHandSecurityContext * sc);
 	AuthStatus decryption_enabled_server(TLSHandSecurityContext * sc);
 	AuthStatus encryption_decryption_enabled_client(TLSHandSecurityContext * sc);
 	AuthStatus encryption_enabled_server (TLSHandSecurityContext * sc);
