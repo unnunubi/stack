@@ -1193,7 +1193,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::process_client_finish_message(c
 		int session_id)
 {
 	TLSHandSecurityContext * sc;
-
+	LOG_DBG("entroooo process client finsih!!!!!!");
 	if (message.obj_value_.message_ == 0) {
 		LOG_ERR("Null object value");
 		return IAuthPolicySet::FAILED;
@@ -1230,6 +1230,8 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::process_client_finish_message(c
 
 		return IAuthPolicySet::FAILED;
 	}
+
+	LOG_DBG("before cryptoseeerver!!!!!!");
 	timer.cancelTask(sc->timer_task);
 	//SDU
 	//TODO
