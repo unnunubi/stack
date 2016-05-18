@@ -1230,6 +1230,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::process_client_finish_message(c
 
 		return IAuthPolicySet::FAILED;
 	}
+	timer.cancelTask(sc->timer_task);
 	//SDU
 	//TODO
 	// Configure kernel SDU protection policy with master secret and algorithms
@@ -1689,7 +1690,7 @@ IAuthPolicySet::AuthStatus AuthTLSHandPolicySet::encryption_decryption_enabled_c
 	}
 	LOG_DBG("Encryption and decryption enabled for port-id: %d", sc->id);
 
-
+	timer.cancelTask(sc->timer_task);
 	sc->state = TLSHandSecurityContext::WAIT_SERVER_FINISH;
 	return send_client_finish(sc);
 }
